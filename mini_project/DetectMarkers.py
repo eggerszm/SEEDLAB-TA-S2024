@@ -60,6 +60,11 @@ def main():
             for c in corners:
                 overlay = cv2.circle(overlay, get_center(c), radius=2, color=(0,0,255), thickness=-1)
             piLCD.write_lcd(f"ERROR:\n{len(corners)} markers found")
+
+        # Exchange data with arduino
+        if current_quadrant is not None:
+            ard.write_byte_data(ARD_ADDR, 0, current_quadrant.value)
+        current_pos = ard.read_byte_data(ARD_ADDR, 1)
          
         # Draw quadrants
         overlay = cv2.line(overlay, (0, int(IMG_Y_HEIGHT/2)), (IMG_X_WIDTH, int(IMG_Y_HEIGHT/2)), (0,0,255), 1)
