@@ -1,4 +1,6 @@
 .venv
 .idea
 .vscode
-
+*.py[cod]
+__pycache__/
+*.swp
