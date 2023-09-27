@@ -20,10 +20,10 @@ IMG_Y_HEIGHT = 480
 ARD_ADDR = 8
 
 class Quadrant(enum.Enum):
-    NW = "NW\n"
-    NE = "NE\n"
-    SW = "SW\n"
-    SE = "SE\n"
+    NW = 0
+    NE = 1
+    SW = 2
+    SE = 3
 
 def main():
     aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_50)
@@ -37,6 +37,7 @@ def main():
 
     piLCD = LCDInit.LCD()
     ard = SMBus(1)
+    current_quadrant, last_quadrant = None, None
 
     while True:
         _, img = camera.read()
@@ -60,8 +61,9 @@ def main():
 
         # Exchange data with arduino
         try: 
-            if current_quadrant is not None:
-                ard.write_i2c_block_data(ARD_ADDR, 0, [ord(c) for c in current_quadrant.value])
+            if current_quadrant is not None and not current_quadrant == last_quadrant:
+                ard.write_i2c_block_data(ARD_ADDR, 0, current_quadrant.value)
+                last_quadrant = current_quadrant
             current_pos = ard.read_byte_data(ARD_ADDR, 1)
         except IOError as e:
             current_pos = None
