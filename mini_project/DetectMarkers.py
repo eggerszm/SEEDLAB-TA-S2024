@@ -20,10 +20,10 @@ IMG_Y_HEIGHT = 480
 ARD_ADDR = 8
 
 class Quadrant(enum.Enum):
-    NW = 0
-    NE = 1
-    SW = 2
-    SE = 3
+    NW = "NW\n"
+    NE = "NE\n"
+    SW = "SW\n"
+    SE = "SE\n"
 
 def main():
     aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_50)
@@ -51,26 +51,30 @@ def main():
             ctr = get_center(corners[0])
             overlay = cv2.circle(overlay, ctr, radius=2, color=(0,0,255), thickness=-1)
             current_quadrant = get_point_quadrant(ctr)
-            piLCD.write_lcd(current_quadrant.name)
         elif corners == ():
             current_quadrant = None
-            piLCD.write_lcd("No markers")
         else:
             current_quadrant = None
             for c in corners:
                 overlay = cv2.circle(overlay, get_center(c), radius=2, color=(0,0,255), thickness=-1)
-            piLCD.write_lcd(f"ERROR:\n{len(corners)} markers found")
 
         # Exchange data with arduino
-        if current_quadrant is not None:
-            ard.write_byte_data(ARD_ADDR, 0, current_quadrant.value)
-        current_pos = ard.read_byte_data(ARD_ADDR, 1)
+        try: 
+            if current_quadrant is not None:
+                ard.write_i2c_block_data(ARD_ADDR, 0, [ord(c) for c in current_quadrant.value])
+            current_pos = ard.read_byte_data(ARD_ADDR, 1)
+        except IOError as e:
+            current_pos = None
+            print("Failed to communicate with Arduino")
          
         # Draw quadrants
         overlay = cv2.line(overlay, (0, int(IMG_Y_HEIGHT/2)), (IMG_X_WIDTH, int(IMG_Y_HEIGHT/2)), (0,0,255), 1)
         overlay = cv2.line(overlay, (int(IMG_X_WIDTH/2), 0), (int(IMG_X_WIDTH/2), IMG_Y_HEIGHT), (0,0,255), 1)
 
         cv2.imshow("overlay", overlay)
+
+        # Update LCD
+        piLCD.write_lcd(f"Target: {current_quadrant.name if current_quadrant is not None else None}\nCurrent: {current_pos if current_pos is not None else 0}")
 
         if (cv2.waitKey(1) & 0xFF) == ord("q"):
             cv2.destroyAllWindows()
