@@ -50,7 +50,7 @@ void loop() {
   if(voltage > 0) {
     digitalWrite(8, HIGH);
   } else {
-    digitalWrite(8, LOW)
+    digitalWrite(8, LOW);
   }
 
   int PWM = 255 * abs(voltage)/BATTERY_VOLTAGE;

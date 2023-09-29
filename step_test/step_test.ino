@@ -48,7 +48,7 @@ void setup() {
 
 void loop() {
 
-  currentTime = (float)(lastTimeMs - startTimeMs)/1000
+  currentTime = (float)(lastTimeMs - startTimeMs)/1000;
 
   if (currentTime < 1) {
     targetPos = 0;
@@ -67,13 +67,13 @@ void loop() {
   if(voltage > 0) {
     digitalWrite(8, HIGH);
   } else {
-    digitalWrite(8, LOW)
+    digitalWrite(8, LOW);
   }
 
   int PWM = 255 * abs(voltage)/BATTERY_VOLTAGE;
   analogWrite(10, min(PWM, 255));
 
-  posRad = 2.0 * PI * (double)((double)posRad / 3200.0);
+  int posRad = 2.0 * PI * (double)((double)posRad / 3200.0);
 
   //Print Statements
   if (currentTime < 10) { // Print for 10 seconds
