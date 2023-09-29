@@ -38,11 +38,6 @@ void setup() {
 
 }
 
-
-// I = I + ts * error
-// V = Kp * error + ki * i
-// Ts = current time - Tc
-// Tc = current time
 void loop() {
   long currentPos = EncA.read();
 
