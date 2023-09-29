@@ -20,10 +20,10 @@ IMG_Y_HEIGHT = 480
 ARD_ADDR = 8
 
 class Quadrant(enum.Enum):
-    NW = 0
-    NE = 1
-    SW = 2
-    SE = 3
+    NW = '0'
+    NE = '1'
+    SW = '2'
+    SE = '3'
 
 def main():
     aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_50)
@@ -62,11 +62,14 @@ def main():
         # Exchange data with arduino
         try: 
             if current_quadrant is not None and not current_quadrant == last_quadrant:
-                ard.write_i2c_block_data(ARD_ADDR, 0, current_quadrant.value)
+                ard.write_i2c_block_data(ARD_ADDR, 0, [ord(c) for c in current_quadrant.value])
                 last_quadrant = current_quadrant
-            current_pos = ard.read_byte_data(ARD_ADDR, 1)
+            current_pos = None #ard.read_byte_data(ARD_ADDR, 0)
+            for i in range(4):
+                print(ard.read_byte_data(ARD_ADDR, 0))
         except IOError as e:
             current_pos = None
+            print(e)
             print("Failed to communicate with Arduino")
          
         # Draw quadrants
