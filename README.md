@@ -1,11 +1,10 @@
 # SEED Lab Team 9 Repository
-The purpose of this repository  was to allow for several people work on the code to build the final product of the robot. ON the python end this allowed us to build the communication between the Pi and the Arduion while the other person worked on the Aruco detector under the same document. ON the arduino end it helped with setting up the correct controller and taking the set wheel position which is then used to place that wheel in said position. Most importantly, it allowed computer vision and localization to work on eachothers documents as well as made it easier to glue together all of our code for the final product. The organization of the repository is as follows:
+The purpose of this repository is to allow the entire team to share code and documentation. For the Computer Vision and Communication specialization, this allowed one person to focus on communication between the Pi and the Arduion while the other person worked on the Aruco marker detector. For the Localization and Control specialization, this allowed for both team members to work collaboratively on the code for the controller. Most importantly, it allowed both specialization teams to share documentation with each other, making the final integration much simpler. This repository is broken into separate directories for each of the projects. 
+
 ## Mini Project
-Code and documentation of the Raspberry pi for the mini project is located in the mini_project folder
-    -DetectMarkers.py: Contains code for the Raspberry.py that detects the aruco marker and sets position
-    -LCDinit.py: Contains code for the Raspberry.py that displays set position on the lcd
-    -README
-Code and documentation of the arduino is located in the rdwr_test folder
-    -rdwr_test: COntains code for the Arduino that control the wheel
-    -ReadME
-Note that the folder for step_test contains code that was used for testing the robot and feedback system. This folder does NOT contain the final code.
+All code and documentation of the mini project is located in the `mini_project` directory
+- `DetectMarkers.py`: Contains code for the Raspberry pi that detects the aruco marker and sends data to the arduino
+- `LCDinit.py`: Abstractions for easy interfacing with the LCD display on the raspberry pi
+- `README.md`: Project-specific overview and documentation
+- `rdwr_test`: Final arduino code which takes data from the pi and sets wheel position
+- `step_test`: Testing script for system characterization, records data from the step response of the motor

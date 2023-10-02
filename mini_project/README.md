@@ -1,7 +1,19 @@
 # Mini Project
-The way the raspberry pi detects the markers is through the use of DetectMarkers.py. The main purpose of this code is to use a camera attached to the raspberry pi and cv2 library to detect an aruco marker to find what wheel position is desired. The raspberry pi shows a live camera feed with two intersecting lines so the person operating the aruco marker can see where the corner detection ends for the camera detection. The marker to wheel position operates in this way:
-Top left = 0
-Top right = pi/2
-Bottom left = pi
-Bottom right = 3pi/2
-The raspberry pi sends which position to the arduino over i2c using the number associated with that position ('0' for 0 ,'1' for pi/2...). The final function of the raspberry pi is that it takes the set position set by the aruco marker and displays it on the LCD through the use of LCDini.py. This LCD is attached on top of the raspberry pi and is used to verify that the Raspberry pi is setting the right position and that the wheel matches this set position.
+The `DetectMarkers.py` script is responsible for detecting markers and sending
+the detected marker positions to the Arduino. This script uses openCV's built-in
+`aruco.detectMarkers` function on greyscale versions of each frame taken by the
+camera. This script also shows a live feed on the pi's desktop that shows the
+quadrants and the centers of each detected marker to allow for easy debugging.
+
+The marker positions map to wheel positions as follows:
+- Top left (NW) = 0
+- Top right (NE) = pi/2
+- Bottom left (SW) = pi
+- Bottom right (SE) = 3pi/2
+
+The pi sends a byte representing the current target position to the arduino 
+whenver the target changes. The value of these bytes correspond to the ASCII
+characters 0, 1, 2, and 3. The pi also displays the current target position
+on the connected LCD. The `LCDInit.py` module handles updating the LCD when the
+message changes an minimizing display flicker when rapidly updating the 
+displayed value.
