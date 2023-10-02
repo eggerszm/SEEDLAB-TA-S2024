@@ -3,8 +3,8 @@
 // #include <PID_v1.h>
 #define MY_ADDR 8
 
-#define Kp 0.016
-#define Ki 0.0002
+#define Kp 0.012
+#define Ki 0.00019
 #define BATTERY_VOLTAGE 8
 
 volatile uint8_t offset = 0;
@@ -81,14 +81,14 @@ void loop() {
   if (currentTime < 10) { // Print for 10 seconds
     Serial.print(currentTime, 3);
     Serial.print("\t");
-    Serial.print(voltage, 3);
+    Serial.print(min(voltage, BATTERY_VOLTAGE), 3);
     Serial.print("\t");
-    Serial.print(error);
-    Serial.print("\t");
-    Serial.print(integral, 5);
-    Serial.print("\t");
-    Serial.print(currentPos);
-    Serial.print("\t");
+    // Serial.print(error);
+    // Serial.print("\t");
+    // Serial.print(integral, 5);
+    // Serial.print("\t");
+    // Serial.print(currentPos);
+    // Serial.print("\t");
     Serial.println(posRad, 4);
 
   } else if (!printFlag) {
