@@ -58,11 +58,12 @@ void loop() {
 
   while(millis() < lastTimeMs + desiredTsMs);
   lastTimeMs = millis();
+  Serial.println(currentPos);
 }
 
 void request(){
-
-  Serial.println(currentPos);
+  
+  // Serial.println(currentPos);
   Wire.write(((byte *)currentPos)[0]); // I2C opperates in byte chunks which is why we convert currentPos to byte
   Wire.write(((byte *)currentPos)[1]);
   Wire.write(((byte *)currentPos)[2]);
