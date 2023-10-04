@@ -65,8 +65,6 @@ def main():
                 ard.write_i2c_block_data(ARD_ADDR, 0, [ord(c) for c in current_quadrant.value])
                 last_quadrant = current_quadrant
             current_pos = None #ard.read_byte_data(ARD_ADDR, 0)
-            for i in range(4):
-                print(ard.read_byte_data(ARD_ADDR, 0))
         except IOError as e:
             current_pos = None
             print(e)
@@ -79,7 +77,7 @@ def main():
         cv2.imshow("overlay", overlay)
 
         # Update LCD
-        piLCD.write_lcd(f"Target: {current_quadrant.name if current_quadrant is not None else None}\nCurrent: {current_pos if current_pos is not None else 0}")
+        piLCD.write_lcd(f"Target: {current_quadrant.name if current_quadrant is not None else None}")
 
         if (cv2.waitKey(1) & 0xFF) == ord("q"):
             cv2.destroyAllWindows()
