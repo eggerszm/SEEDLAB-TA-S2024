@@ -10,7 +10,28 @@
 
 #define BATTERY_VOLTAGE 8
 
-#define TARGET_FEET 1.0
+#define TARGET_FEET 10.0
+
+#define MAX_PWM 100
+
+
+/* This needs to be replaced by a feedback loop for angle
+
+Currently, simple fudge factor to keep it relatively "straight"
+However, this is eyeballed and needs to be fixed.
+It should change over time as the angle gets out of hand
+Current idea to fix this:
+angleError = rightCount - leftCount
+Implement feedback loop with desired = 0
+Can later implement transfer function to find actual angle
+    This will require math I don't want to do right now
+    Has something to do with radius of the robot and pi
+This would allow us to add desired angles as required for the demo.
+
+Will work on this tomorrow (maybe with Gideon)
+*/
+#define LEFT_TOO_FAST 2
+
 
 volatile uint8_t offset = 0;
 int req_message = 1;
@@ -58,19 +79,28 @@ void loop() {
 
   currentTime = (float)(lastTimeMs - startTimeMs)/1000;
 
-  long currentPosLeft = EncLeft.read();
-  long currentPosB = EncRight.read();
+  long currentPosLeft = -EncLeft.read();
+  long currentPosRight = EncRight.read();
 
-  long targetPos = 2700.0 * TARGET_FEET; // 3200.0 / (15 * PI) * 30.48
+  long targetPos = 2070.0 * TARGET_FEET; // 3200.0 / (15.0 * PI) * 30.48
 
   errorLeft = targetPos - currentPosLeft;
   errorRight = targetPos - currentPosRight;
 
-  integralLeft = integralLeft + ( double(desiredTsMs) / 1000.0 ) * errorLeft;
-  integralRight = integralRight + ( double(desiredTsMs) / 1000.0 ) * errorRight;
+  // if (abs(errorLeft) < DEADBAND_SIZE) {
+  //   integralLeft = 0;
+  // } else {
+    integralLeft = integralLeft + ( double(desiredTsMs) / 1000.0 ) * errorLeft;
+  //}
 
-  voltageLeft = KpLEFT * errorA + KiLEFT * integralLeft;
-  voltageRight = KpRIGHT * errorB + KiRIGHT * integralRight;
+  // if (abs(errorRight) < DEADBAND_SIZE) {
+  //  integralRight = 0;
+  // } else {
+    integralRight = integralRight + ( double(desiredTsMs) / 1000.0 ) * errorRight;
+  // }
+
+  voltageLeft = KpLEFT * errorLeft + KiLEFT * integralLeft;
+  voltageRight = KpRIGHT * errorRight + KiRIGHT * integralRight;
 
   // H-Bridge Direction
   if(voltageLeft > 0) {
@@ -82,51 +112,35 @@ void loop() {
   if(voltageRight > 0) {
     digitalWrite(8, HIGH);
   } else {
-    digitalWrite(8, Low);
+    digitalWrite(8, LOW);
   }
 
   int PWMLeft = 255 * abs(voltageLeft)/BATTERY_VOLTAGE;
-  analogWrite(9, min(PWMLeft, 255));
+  analogWrite(9, max(min(PWMLeft, MAX_PWM) - LEFT_TOO_FAST, 0) );
 
   int PWMRight = 255 * abs(voltageRight)/BATTERY_VOLTAGE;
-  analogWrite(10, min(PWMRight, 255));
-
-  // double posRad = 2.0 * PI * (double)((double)currentPos / 3200.0);
+  analogWrite(10, min(PWMRight, MAX_PWM));
 
   // Print Statements
-  // if (currentTime < 10) { // Print for 10 seconds
-  //   Serial.print(currentTime, 3);
-  //   Serial.print("\t");
-  //   Serial.print(min(voltage, BATTERY_VOLTAGE), 3);
-  //   Serial.print("\t");
-  //   // Serial.print(error);
-  //   // Serial.print("\t");
-  //   // Serial.print(integral, 5);
-  //   // Serial.print("\t");
-  //   // Serial.print(currentPos);
-  //   // Serial.print("\t");
-  //   Serial.println(posRad, 4);
 
-  // } else if (!printFlag) {
-  //   Serial.println("Finished");
-  //   printFlag = 1;
-  // }
+  if (currentTime < 10) { // Print for 10 seconds
+    Serial.print(currentTime, 3);
+    Serial.print("\t");
+    Serial.print(targetPos);
+    Serial.print("\t");
+    Serial.print(voltageRight, 3);
+    Serial.print("\t");
+    Serial.print(voltageLeft, 3);
+    Serial.print("\t");
+    Serial.print(currentPosRight);
+    Serial.print("\t");
+    Serial.println(currentPosLeft);
+
+  } else if (!printFlag) {
+    Serial.println("Finished");
+    printFlag = 1;
+  }
 
   while(millis() < lastTimeMs + desiredTsMs);
   lastTimeMs = millis();
 }
-
-// void request(){
-//   Wire.write(currentPos);
-// }
-
-// void receive(int arg){
-//   while (Wire.available()) {
-//     targetPos = (int)Wire.read() * 800; // Number of counts for target position
-//   }
-//   if ((targetPos - currentPos) > 1600) {
-//     targetPos -= 3200;
-//   } else if ((targetPos - currentPos) < -1600) {
-//     targetPos += 3200;
-//   }
-// }
