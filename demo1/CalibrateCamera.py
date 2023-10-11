@@ -25,23 +25,22 @@ for fname in images:
         imgpoints.append(corners2)
         # Draw and display the corners
         cv.drawChessboardCorners(img, (9,6), corners2, ret)
-        #cv.imshow('img', img)
-        #cv.waitKey(500)
+        cv.imshow('img', img)
+        cv.waitKey(500)
 
 ret, mtx, dist, rvecs, tvecs = cv.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 print(ret, mtx, dist, rvecs, tvecs)
 
 cv.destroyAllWindows()
 
-for fname in images:
-    img = cv.imread(fname)
-    gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-    #dst = cv.undistort(img, mtx, dist, None, newcameramatrix)
 
+#mean_error = 0
+#for i in range(len(objpoints)):
+#    imgpoints2, _ = cv.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
+#    error = cv.norm(imgpoints[i], imgpoints2, cv.NORM_L2)/len(imgpoints2)
+#    mean_error += error
+#print( "total error: {}".format(mean_error/len(objpoints)) )
 
-mean_error = 0
-for i in range(len(objpoints)):
-    imgpoints2, _ = cv.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
-    error = cv.norm(imgpoints[i], imgpoints2, cv.NORM_L2)/len(imgpoints2)
-    mean_error += error
-print( "total error: {}".format(mean_error/len(objpoints)) )
+# Save
+np.savez("calib_data.npz", camera_matrix=mtx, dist_coeff=dist)
+
