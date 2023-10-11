@@ -32,3 +32,6 @@ class LCD():
             self.lcd.message = msg
             self.current_msg = msg
 
+    def soft_update(self, msg: str):
+        self.current_msg = msg
+        self.lcd.message = msg
