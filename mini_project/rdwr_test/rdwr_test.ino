@@ -64,10 +64,10 @@ void loop() {
 void request(){
   
   // Serial.println(currentPos);
-  Wire.write(((byte *)currentPos)[0]); // I2C opperates in byte chunks which is why we convert currentPos to byte
-  Wire.write(((byte *)currentPos)[1]);
-  Wire.write(((byte *)currentPos)[2]);
-  Wire.write(((byte *)currentPos)[3]);
+  Wire.write(((byte *)&currentPos)[0]); // I2C opperates in byte chunks which is why we convert currentPos to byte
+  Wire.write(((byte *)&currentPos)[1]); // Maybe add &currentPos instead of currentPos - Dawson Gullickson
+  Wire.write(((byte *)&currentPos)[2]);
+  Wire.write(((byte *)&currentPos)[3]);
 }
 
 void receive(int arg){
