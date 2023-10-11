@@ -17,17 +17,10 @@ import LCDInit
 IMG_X_WIDTH = 640
 IMG_Y_HEIGHT = 480
 
-ARD_ADDR = 8
-
-class Quadrant(enum.Enum):
-    NW = '0'
-    NE = '1'
-    SW = '2'
-    SE = '3'
 
 def main():
     aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_50)
-    
+
     camera = cv2.VideoCapture(0)
     camera.set(cv2.CAP_PROP_FRAME_WIDTH, IMG_X_WIDTH)
     camera.set(cv2.CAP_PROP_FRAME_HEIGHT, IMG_Y_HEIGHT)
@@ -37,7 +30,6 @@ def main():
 
     piLCD = LCDInit.LCD()
     ard = SMBus(1)
-    current_quadrant, last_quadrant = None, None
 
     while True:
         _, img = camera.read()
@@ -50,40 +42,27 @@ def main():
 
         if len(corners) == 1:
             ctr = get_center(corners[0])
-            overlay = cv2.circle(overlay, ctr, radius=2, color=(0,0,255), thickness=-1)
-            current_quadrant = get_point_quadrant(ctr)
+            overlay = cv2.circle(
+                overlay, ctr, radius=2, color=(0, 0, 255), thickness=-1
+            )
         elif corners == ():
-            current_quadrant = None
         else:
-            current_quadrant = None
             for c in corners:
-                overlay = cv2.circle(overlay, get_center(c), radius=2, color=(0,0,255), thickness=-1)
-
-        # Exchange data with arduino
-        try: 
-            if current_quadrant is not None and not current_quadrant == last_quadrant:
-                ard.write_i2c_block_data(ARD_ADDR, 0, [ord(c) for c in current_quadrant.value])
-                last_quadrant = current_quadrant
-            current_pos = None #ard.read_byte_data(ARD_ADDR, 0)
-        except IOError as e:
-            current_pos = None
-            print(e)
-            print("Failed to communicate with Arduino")
-         
-        # Draw quadrants
-        overlay = cv2.line(overlay, (0, int(IMG_Y_HEIGHT/2)), (IMG_X_WIDTH, int(IMG_Y_HEIGHT/2)), (0,0,255), 1)
-        overlay = cv2.line(overlay, (int(IMG_X_WIDTH/2), 0), (int(IMG_X_WIDTH/2), IMG_Y_HEIGHT), (0,0,255), 1)
+                overlay = cv2.circle(
+                    overlay, get_center(c), radius=2, color=(0, 0, 255), thickness=-1
+                )
 
         cv2.imshow("overlay", overlay)
 
         # Update LCD
-        piLCD.write_lcd(f"Target: {current_quadrant.name if current_quadrant is not None else None}")
+        piLCD.write_lcd(f"Angle: ")
 
         if (cv2.waitKey(1) & 0xFF) == ord("q"):
             cv2.destroyAllWindows()
             piLCD.cleanup()
             ard.close()
             break
+
 
 def get_center(corners: np.array) -> Tuple[int, int]:
     """
@@ -93,9 +72,14 @@ def get_center(corners: np.array) -> Tuple[int, int]:
     Returns:
         Tuple[int, int]: coordinates of the marker in the frame
     """
-    xctr = (corners[0,0,0] + corners[0,1,0] + corners[0,2,0] + corners[0,3,0])/4
-    yctr = (corners[0,0,1] + corners[0,1,1] + corners[0,2,1] + corners[0,3,1])/4
+    xctr = (
+        corners[0, 0, 0] + corners[0, 1, 0] + corners[0, 2, 0] + corners[0, 3, 0]
+    ) / 4
+    yctr = (
+        corners[0, 0, 1] + corners[0, 1, 1] + corners[0, 2, 1] + corners[0, 3, 1]
+    ) / 4
     return (int(xctr), int(yctr))
+
 
 def get_point_quadrant(point: Tuple[int, int]) -> Quadrant:
     """
@@ -105,11 +89,11 @@ def get_point_quadrant(point: Tuple[int, int]) -> Quadrant:
     Returns:
         Quadrant: Quadrant of point, from enum
     """
-    if point[0] <= IMG_X_WIDTH/2 and point[1] <= IMG_Y_HEIGHT/2:
+    if point[0] <= IMG_X_WIDTH / 2 and point[1] <= IMG_Y_HEIGHT / 2:
         return Quadrant.NW
-    elif point[0] <= IMG_Y_HEIGHT/2:
+    elif point[0] <= IMG_Y_HEIGHT / 2:
         return Quadrant.SW
-    elif point[1] <= IMG_X_WIDTH/2:
+    elif point[1] <= IMG_X_WIDTH / 2:
         return Quadrant.NE
     else:
         return Quadrant.SE

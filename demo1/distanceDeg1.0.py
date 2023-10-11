@@ -1,9 +1,3 @@
-"""
-Marker Detection
-SEED Lab Group 9, Fall 2023
-
-"""
-
 import cv2
 import enum
 import time
@@ -11,8 +5,9 @@ import numpy as np
 from cv2 import aruco
 from smbus2 import SMBus
 from typing import Tuple
+import math
 
-import LCDInit
+
 
 IMG_X_WIDTH = 640
 IMG_Y_HEIGHT = 480
@@ -35,7 +30,6 @@ def main():
 
     time.sleep(0.5)
 
-    piLCD = LCDInit.LCD()
     ard = SMBus(1)
     current_quadrant, last_quadrant = None, None
 
@@ -51,13 +45,26 @@ def main():
         if len(corners) == 1:
             ctr = get_center(corners[0])
             overlay = cv2.circle(overlay, ctr, radius=2, color=(0,0,255), thickness=-1)
-            current_quadrant = get_point_quadrant(ctr)
-        elif corners == ():
-            current_quadrant = None
-        else:
-            current_quadrant = None
-            for c in corners:
-                overlay = cv2.circle(overlay, get_center(c), radius=2, color=(0,0,255), thickness=-1)
+            xcord = ctr[0]
+            if(xcord == 320):
+                xcord = 320.1
+            
+            #xcord = (xcord-320)
+            
+            fLength = 333.82
+            distance = (4 * fLength)/xcord
+            deg = math.atan(xcord/distance)
+            deg = (deg * 180)/3.14
+            #print(deg)
+            #print(distance)
+            print(xcord)
+            #current_quadrant = get_point_quadrant(ctr)
+        #elif corners == ():
+            #current_quadrant = None
+        #else:
+            #current_quadrant = None
+            #for c in corners:
+                #overlay = cv2.circle(overlay, get_center(c), radius=2, color=(0,0,255), thickness=-1)
 
         # Exchange data with arduino
         try: 
@@ -69,22 +76,20 @@ def main():
             current_pos = None
             print(e)
             print("Failed to communicate with Arduino")
-         
+
         # Draw quadrants
-        overlay = cv2.line(overlay, (0, int(IMG_Y_HEIGHT/2)), (IMG_X_WIDTH, int(IMG_Y_HEIGHT/2)), (0,0,255), 1)
-        overlay = cv2.line(overlay, (int(IMG_X_WIDTH/2), 0), (int(IMG_X_WIDTH/2), IMG_Y_HEIGHT), (0,0,255), 1)
+        #overlay = cv2.line(overlay, (0, int(IMG_Y_HEIGHT/2)), (IMG_X_WIDTH, int(IMG_Y_HEIGHT/2)), (0,0,255), 1)
+        #overlay = cv2.line(overlay, (int(IMG_X_WIDTH/2), 0), (int(IMG_X_WIDTH/2), IMG_Y_HEIGHT), (0,0,255), 1)
 
         cv2.imshow("overlay", overlay)
+        
 
-        # Update LCD
-        piLCD.write_lcd(f"Target: {current_quadrant.name if current_quadrant is not None else None}")
 
         if (cv2.waitKey(1) & 0xFF) == ord("q"):
             cv2.destroyAllWindows()
-            piLCD.cleanup()
             ard.close()
             break
-
+        
 def get_center(corners: np.array) -> Tuple[int, int]:
     """
     Take a corners array and return its center point
@@ -113,7 +118,6 @@ def get_point_quadrant(point: Tuple[int, int]) -> Quadrant:
         return Quadrant.NE
     else:
         return Quadrant.SE
-
 
 if __name__ == "__main__":
     main()
