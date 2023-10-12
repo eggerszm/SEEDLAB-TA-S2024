@@ -1,3 +1,6 @@
+/*
+This code is deeply flawed. Will fix at a later date
+*/
 #include <Wire.h>
 #include <Encoder.h>
 // #include <PID_v1.h>
@@ -22,6 +25,8 @@ However, this is eyeballed and needs to be fixed.
 It should change over time as the angle gets out of hand
 Current idea to fix this:
 angleError = rightCount - leftCount
+This idea may be flawed:
+Instead ensure that ve
 Implement feedback loop with desired = 0
 Can later implement transfer function to find actual angle
     This will require math I don't want to do right now
