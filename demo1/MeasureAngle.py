@@ -66,7 +66,7 @@ def main():
         cv2.imshow("original", overlay)
 
         # Update LCD
-        piLCD.soft_update(f"xpos: {ctrx_to_deg(ctr[0]):.2f}")
+        piLCD.soft_update(f"angle: {ctrx_to_deg(ctr[0]):.2f}")
 
         if (cv2.waitKey(1) & 0xFF) == ord("q"):
             cv2.destroyAllWindows()
@@ -91,7 +91,7 @@ def get_center(corners: np.array) -> Tuple[int, int]:
     return (int(xctr), int(yctr))
 
 def ctrx_to_deg(xpos: int) -> float:
-    return 0.084826 * float(xpos) - 27.218717
+    return -1* (0.084826 * float(xpos) - 27.218717)
 
 if __name__ == "__main__":
     main()
