@@ -13,15 +13,15 @@ Utilize readme for function
 // Tune to minimize slip
 #define MAX_PWM 100
 
-#define TARGET_ANGLE_IN_RADIANS PI
-#define TARGET_DISTANCE_IN_FEET 3.0
+#define TARGET_ANGLE_IN_RADIANS PI/2
+#define TARGET_DISTANCE_IN_FEET 2.0
 
-#define ERROR_BAND_COUNTS 10
+#define ERROR_BAND_ANGLE 0.01
 
 // Rough Estimates - still require some fine tuning, but pretty decent steady state
 #define KpANGLE 19 // NEEDS TUNING - Defines how fast it reaches the angle
-#define KdANGULAR_VELOCITY 0.1 // NEEDS TUNING
-#define KpANGULAR_VELOCITY 10 // NEEDS TUNING- Defines Agrressiveness at accelerating to desired velocity
+#define KdANGULAR_VELOCITY 0.2 // NEEDS TUNING
+#define KpANGULAR_VELOCITY 5 // NEEDS TUNING- Defines Agrressiveness at accelerating to desired velocity
 
 #define KiLINEAR 0.05
 #define KpLINEAR 3.4
@@ -121,18 +121,22 @@ void loop() {
   double voltDelta = VoltDelta_PD(desiredAngularVelocity, currentAngularVelocity, previousAngularVelocityError);
 
   // Linear Control
+  double voltSum = 0;
+  if (abs(targetAngle - currentAngle) < ERROR_BAND_ANGLE) {
 
-  // Set desiredVelocity using PI control
-  long targetPos = 2070 * TARGET_DISTANCE_IN_FEET;
-  long currentPos = (currentCountLeft + currentCountRight) / 2;
+    // Set desiredVelocity using PI control
+    long targetPos = 2070 * TARGET_DISTANCE_IN_FEET;
+    long currentPos = (currentCountLeft + currentCountRight) / 2;
 
-  double desiredVelocity = LinearVelocity_PI(targetPos, currentPos);
+    double desiredVelocity = LinearVelocity_PI(targetPos, currentPos);
+    
+
+    // PI control for linear velocity to find voltage
+    double currentVelocity = WHEEL_DIAMETER_IN_CM / 2.0 * (thetaDotRight + thetaDotLeft) / 2.0; // Average speed of the wheels is linear velocity measured in cm
+
+    voltSum = VoltSum_PI(desiredVelocity, currentVelocity);
   
-
-  // PI control for linear velocity to find voltage
-  double currentVelocity = WHEEL_DIAMETER_IN_CM / 2.0 * (thetaDotRight + thetaDotLeft) / 2.0; // Average speed of the wheels is linear velocity measured in cm
-
-  double voltSum = VoltSum_PI(desiredVelocity, currentVelocity);
+  }
 
 
   // Run Motors
@@ -171,23 +175,27 @@ void loop() {
   if (currentTime < 10) {
     Serial.print(currentTime, 3);
     Serial.print("\t");
-    Serial.print(voltSum, 3);
+    // Serial.print(voltSum, 3);
+    // Serial.print("\t");
+    // Serial.print(voltDelta, 3);
+    // Serial.print("\t");
+    // Serial.print(voltageLeft);
+    // Serial.print("\t");
+    // Serial.print(voltageRight);
+    // Serial.print("\t");
+    // Serial.print(currentCountLeft);
+    // Serial.print("\t");
+    // Serial.print(currentCountRight);
+    // Serial.print("\t");
+    // Serial.print(currentPos);
+    // Serial.print("\t");
+    // Serial.print(desiredAngularVelocity);
+    // Serial.print("\t");
+    Serial.print(targetAngle, 5);
     Serial.print("\t");
-    Serial.print(voltDelta, 3);
+    Serial.print(currentAngle, 5);
     Serial.print("\t");
-    Serial.print(voltageLeft);
-    Serial.print("\t");
-    Serial.print(voltageRight);
-    Serial.print("\t");
-    Serial.print(currentCountLeft);
-    Serial.print("\t");
-    Serial.print(currentCountRight);
-    Serial.print("\t");
-    Serial.print(currentPos);
-    Serial.print("\t");
-    Serial.print(desiredAngularVelocity);
-    Serial.print("\t");
-    Serial.println(currentAngle, 5);
+    Serial.println(targetAngle - currentAngle, 5);
   }
 
   while(millis() < lastTimeMs + desiredTsMs);
