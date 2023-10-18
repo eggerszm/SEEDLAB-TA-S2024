@@ -7,14 +7,14 @@ Utilize readme for function
 
 // Physical Constants of the robot
 #define BATTERY_VOLTAGE 8.2
-#define ROBOT_DIAMETER_IN_CM 36.5
+#define ROBOT_DIAMETER_IN_CM 36.5 * 1.01 // 1.01 is determined empirically
 #define WHEEL_DIAMETER_IN_CM 15.0
 
 // Tune to minimize slip
-#define MAX_PWM 100
+#define MAX_PWM 50
 
-#define TARGET_ANGLE_IN_RADIANS 0
-#define TARGET_DISTANCE_IN_FEET 5.0
+#define TARGET_ANGLE_IN_RADIANS PI
+#define TARGET_DISTANCE_IN_FEET 3.0
 
 #define ERROR_BAND_ANGLE 0.001
 #define WAIT_CYCLES_ANGLE 100 // Number of cycles to wait while angle settles. Each cycle is desiredTsMs ms long.
@@ -22,11 +22,13 @@ Utilize readme for function
 // Rough Estimates - still require some fine tuning, but pretty decent steady state
 #define KpANGLE 19.0 // NEEDS TUNING - Defines how fast it reaches the angle
 #define KdANGULAR_VELOCITY 0.2 // NEEDS TUNING
-#define KpANGULAR_VELOCITY 50.0 // NEEDS TUNING- Defines Agrressiveness at accelerating to desired velocity
+#define KpANGULAR_VELOCITY 19.0 // NEEDS TUNING- Defines Agrressiveness at accelerating to desired velocity
 #define KiANGULAR_VELOCITY 0.0 // NEEDS TUNING
 
-#define KiLINEAR 0.4
-#define KpLINEAR 3.0
+#define KiLINEAR 0.4 // .4
+#define KpLINEAR 0.8 // 3
+
+#define VSUM_SAT_BAND 1.8
 
 #define KpPOS 0.005
 #define KiPOS 0.00004
@@ -70,16 +72,20 @@ double VoltDelta_PID(double targetAngularVelocity, double currentAngularVelocity
 
 double LinearVelocity_PI(double targetPos, double currentPos) {
   long errorPos = targetPos - currentPos;
-  posIntegral = posIntegral + ( double(desiredTsMs) / 1000.0 ) * errorPos;
+  posIntegral = Sat_d(posIntegral + ( double(desiredTsMs) / 1000.0 ) * errorPos, -5000.0, 5000.0);
 
   return KpPOS * errorPos + KiPOS * posIntegral;  
 }
 
 double VoltSum_PI(double targetVelocity, double currentVelocity) {
   double velocityError = targetVelocity - currentVelocity;
-  velocityIntegral = velocityIntegral +  ( double(desiredTsMs) / 1000.0 ) * velocityError;
+  velocityIntegral = Sat_d(velocityIntegral +  ( double(desiredTsMs) / 1000.0 ) * velocityError, -6.0, 6.0);
 
   return KpLINEAR * velocityError + KiLINEAR * velocityIntegral;
+}
+
+double Sat_d(double x, double min, double max) {
+  return (x < min) ? min : ((x > max) ? max : x);
 }
 
 void setup() {
@@ -115,12 +121,10 @@ void loop() {
   double thetaDotLeft = (thetaLeft - previousThetaLeft) / desiredTsMs; // Left wheel angular velocity
 
   // Angular Control
-
   double currentAngle = WHEEL_DIAMETER_IN_CM / 2.0 * (thetaRight - thetaLeft) / ROBOT_DIAMETER_IN_CM; // Current heading of the robot related to where it started
   double targetAngle = TARGET_ANGLE_IN_RADIANS;
 
   // P control on robot angle to find desired angular velocity
-
   double desiredAngularVelocity = AngularVelocity_P(targetAngle, currentAngle); // COULD ADD I AND/OR D control
 
   // PD control on robot angle to find voltage
@@ -137,6 +141,7 @@ void loop() {
   
   if (angleErrorCount == WAIT_CYCLES_ANGLE) {
     targetPos = 2070 * TARGET_DISTANCE_IN_FEET;
+    // Serial.println("CHARGE!");
   }
 
   long currentPos = (currentCountLeft + currentCountRight) / 2;
@@ -149,7 +154,8 @@ void loop() {
 
   voltSum = VoltSum_PI(desiredVelocity, currentVelocity);
   
-
+  // voltSum shouldn't exceed 1.9x battery voltage to allow room for turning control
+  voltSum = Sat_d(voltSum, -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
 
   // Run Motors
 
@@ -186,8 +192,16 @@ void loop() {
   // Debugging Statements
 
   if (currentTime < 10) {
-    Serial.print(currentTime, 3);
-    Serial.print("\t");
+    // Serial.print(currentTime, 3);
+    // Serial.print("\t");
+    // Serial.print(voltageLeft);
+    // Serial.print("\t");
+    // Serial.print(voltageRight);
+    // Serial.print("\t");
+    // Serial.print(angularVelocityIntegral);
+    // Serial.print("\t");
+    // Serial.print(voltDelta, 4);
+    // Serial.print("\t");
     // Serial.print(voltSum, 3);
     // Serial.print("\t");
     // Serial.print(voltDelta, 3);
@@ -202,13 +216,13 @@ void loop() {
     // Serial.print("\t");
     // Serial.print(currentPos);
     // Serial.print("\t");
-    Serial.print(desiredAngularVelocity);
-    Serial.print("\t");
-    Serial.print(targetAngle, 5);
-    Serial.print("\t");
-    Serial.print(currentAngle, 5);
-    Serial.print("\t");
-    Serial.println(targetAngle - currentAngle, 5);
+    // Serial.print(desiredAngularVelocity);
+    // Serial.print("\t");
+    // Serial.print(targetAngle, 5);
+    // Serial.print("\t");
+    // Serial.print(currentAngle, 5);
+    // Serial.print("\t");
+    // Serial.println(targetAngle - currentAngle, 5);
   }
 
   while(millis() < lastTimeMs + desiredTsMs);
