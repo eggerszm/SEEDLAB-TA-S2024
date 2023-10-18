@@ -6,27 +6,29 @@ Utilize readme for function
 #include <Encoder.h>
 
 // Physical Constants of the robot
-#define BATTERY_VOLTAGE 8.0
+#define BATTERY_VOLTAGE 8.2
 #define ROBOT_DIAMETER_IN_CM 36.5
 #define WHEEL_DIAMETER_IN_CM 15.0
 
 // Tune to minimize slip
 #define MAX_PWM 100
 
-#define TARGET_ANGLE_IN_RADIANS PI/2
-#define TARGET_DISTANCE_IN_FEET 2.0
+#define TARGET_ANGLE_IN_RADIANS 0
+#define TARGET_DISTANCE_IN_FEET 5.0
 
-#define ERROR_BAND_ANGLE 0.01
+#define ERROR_BAND_ANGLE 0.001
+#define WAIT_CYCLES_ANGLE 100 // Number of cycles to wait while angle settles. Each cycle is desiredTsMs ms long.
 
 // Rough Estimates - still require some fine tuning, but pretty decent steady state
-#define KpANGLE 19 // NEEDS TUNING - Defines how fast it reaches the angle
+#define KpANGLE 19.0 // NEEDS TUNING - Defines how fast it reaches the angle
 #define KdANGULAR_VELOCITY 0.2 // NEEDS TUNING
-#define KpANGULAR_VELOCITY 5 // NEEDS TUNING- Defines Agrressiveness at accelerating to desired velocity
+#define KpANGULAR_VELOCITY 50.0 // NEEDS TUNING- Defines Agrressiveness at accelerating to desired velocity
+#define KiANGULAR_VELOCITY 0.0 // NEEDS TUNING
 
-#define KiLINEAR 0.05
-#define KpLINEAR 3.4
+#define KiLINEAR 0.4
+#define KpLINEAR 3.0
 
-#define KpPOS 0.008
+#define KpPOS 0.005
 #define KiPOS 0.00004
 
 #define desiredTsMs 5 // Desired sampling time in ms -- previously was 10, may want to change back
@@ -36,6 +38,9 @@ double previousThetaLeft = 0.0;
 
 double previousAngularVelocityError = 0.0;
 
+long targetPos = 0;
+int angleErrorCount = 0;
+
 float currentTime; // Current time in seconds
 unsigned long lastTimeMs = 0; // Time at which last loop finished running in ms
 unsigned long startTimeMs; // Time when the code starts running in ms
@@ -43,7 +48,8 @@ unsigned long startTimeMs; // Time when the code starts running in ms
 double velocityIntegral;
 double posIntegral;
 
-double angularVelocityError;
+double angularVelocityError = 0;
+double angularVelocityIntegral = 0;
 
 // Encoder setup
 Encoder EncLeft(3, 6); // Encoder on left wheel is pins 3 and 6
@@ -54,11 +60,12 @@ double AngularVelocity_P(double targetAngle, double currentAngle) {
   return KpANGLE * errorAngle; // COULD ADD I AND/OR D control
 }
 
-double VoltDelta_PD(double targetAngularVelocity, double currentAngularVelocity, double previousAngularVelocityError) {
-  double angularVelocityError = targetAngularVelocity - currentAngularVelocity;
+double VoltDelta_PID(double targetAngularVelocity, double currentAngularVelocity, double previousAngularVelocityError) {
+  angularVelocityError = targetAngularVelocity - currentAngularVelocity;
   double angularVelocityDerivative = (angularVelocityError - previousAngularVelocityError) / desiredTsMs;
+  angularVelocityIntegral = angularVelocityIntegral + ( double(desiredTsMs) / 1000.0 ) * angularVelocityError;
 
-  return KpANGULAR_VELOCITY * angularVelocityError + KdANGULAR_VELOCITY * angularVelocityDerivative;
+  return (KpANGULAR_VELOCITY * angularVelocityError) + (KiANGULAR_VELOCITY * angularVelocityIntegral) + (KdANGULAR_VELOCITY * angularVelocityDerivative);
 }
 
 double LinearVelocity_PI(double targetPos, double currentPos) {
@@ -118,25 +125,30 @@ void loop() {
 
   // PD control on robot angle to find voltage
   double currentAngularVelocity = WHEEL_DIAMETER_IN_CM / 2.0 * (thetaDotRight - thetaDotLeft) / ROBOT_DIAMETER_IN_CM;
-  double voltDelta = VoltDelta_PD(desiredAngularVelocity, currentAngularVelocity, previousAngularVelocityError);
+  double voltDelta = VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, previousAngularVelocityError);
 
   // Linear Control
   double voltSum = 0;
-  if (abs(targetAngle - currentAngle) < ERROR_BAND_ANGLE) {
 
-    // Set desiredVelocity using PI control
-    long targetPos = 2070 * TARGET_DISTANCE_IN_FEET;
-    long currentPos = (currentCountLeft + currentCountRight) / 2;
-
-    double desiredVelocity = LinearVelocity_PI(targetPos, currentPos);
-    
-
-    // PI control for linear velocity to find voltage
-    double currentVelocity = WHEEL_DIAMETER_IN_CM / 2.0 * (thetaDotRight + thetaDotLeft) / 2.0; // Average speed of the wheels is linear velocity measured in cm
-
-    voltSum = VoltSum_PI(desiredVelocity, currentVelocity);
-  
+  // Set desiredVelocity using PI control after turning is complete
+  if (abs(targetAngle - currentAngle) < ERROR_BAND_ANGLE || targetAngle == 0) { // Check if turning is within error band. For demo, set error band very low
+    angleErrorCount++;
   }
+  
+  if (angleErrorCount == WAIT_CYCLES_ANGLE) {
+    targetPos = 2070 * TARGET_DISTANCE_IN_FEET;
+  }
+
+  long currentPos = (currentCountLeft + currentCountRight) / 2;
+
+  double desiredVelocity = LinearVelocity_PI(targetPos, currentPos);
+  
+
+  // PI control for linear velocity to find voltage
+  double currentVelocity = WHEEL_DIAMETER_IN_CM / 2.0 * (thetaDotRight + thetaDotLeft) / 2.0; // Average speed of the wheels is linear velocity measured in cm
+
+  voltSum = VoltSum_PI(desiredVelocity, currentVelocity);
+  
 
 
   // Run Motors
@@ -172,6 +184,7 @@ void loop() {
   previousAngularVelocityError = angularVelocityError;
   
   // Debugging Statements
+
   if (currentTime < 10) {
     Serial.print(currentTime, 3);
     Serial.print("\t");
@@ -189,8 +202,8 @@ void loop() {
     // Serial.print("\t");
     // Serial.print(currentPos);
     // Serial.print("\t");
-    // Serial.print(desiredAngularVelocity);
-    // Serial.print("\t");
+    Serial.print(desiredAngularVelocity);
+    Serial.print("\t");
     Serial.print(targetAngle, 5);
     Serial.print("\t");
     Serial.print(currentAngle, 5);
