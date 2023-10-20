@@ -1,5 +1,5 @@
 # Test Code
-Note: This is NOT the main code for running the project. This is all code that was used to create the final product 
+Note: This is NOT the main code for running demo1. This is all code that was used to create the final product 
 
 The `distanceDeg1.0.py` Is a possible soltution to measuring the angle from the camera to the aruco marker. 
 The idea is that we calculate the  focul length of the camera and measure the width of the precieved aruco marker
@@ -11,4 +11,4 @@ The `take20pictures` takes 20 pictures and was used to calibrate the camera
 
 `images` contains the 20 images taken using the `take20picture.py`
 
-`rotationalcontrol` contains `rotationalcontrol.INO` which is what we used to 
+`rotationalcontrol` contains code which is was used to prototype how we control the wheels of the robot. This i then later built off of on our final product
