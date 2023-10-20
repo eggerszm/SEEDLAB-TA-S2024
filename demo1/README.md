@@ -5,7 +5,7 @@ To operate demo1, the user should run `MeasureAngle.py` to measure the angle bet
 need to be in the same folder as `MeasureAngle.py` to run `MeasureAngle.py`. DO NOT RUN `LCDInit.py`and `calib_data.npz`. unless you want to generate 
 your own camera calibration data, DO NOT RUN `CalibrateCamera.py`.
 
-To operate the movement of the robot in demo1, the user should run `AngularWIP`.
+To operate the movement of the robot in demo1, the user should run `RobotControll`.
 
 Files that should not be run:
 -Anything in `testCode(NOT MAIN CODE)`
@@ -26,3 +26,13 @@ displayed value.
 
 The `CalibrateCamera.py` uses the camera to make calibrate data and save it under `calib_data.npz`. This data is then used in `MeasureAngle.py`
 to calibrate the camera.
+
+
+
+
+The `RobotControll` file is used to determine distance and angular movement for the robot.
+This program uses three different controllers. P, PI, and PID controllers. 
+The P controller is used to find Angular Velocity of the robot. 
+PI controllers are used to find LinearVelocity and Linear Voltage
+The PID Controller is used to determine the Rotational Voltage. In other words, it helps us accelerate to our angular velocity. 
+

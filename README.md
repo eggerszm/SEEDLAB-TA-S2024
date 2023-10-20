@@ -14,7 +14,7 @@ All code and documentation of demo 1 is located in the `demo1` directory
 - `MeasureAngle.py`: Contains code for the Raspberry pi that measures the angle between the aruco marker and the camera. (run this to run demo1)
 - `LCDinit.py`: Abstractions for easy interfacing with the LCD display on the raspberry pi
 - `README.md`: Project-specific overview and documentation
-- `Angular`: Final arduino code which goes a specified distance and stops. It also rotates the robot a specified amount (run this to run demo1)
+- `RobotControll`: Final arduino code which goes a specified distance and stops. It also rotates the robot a specified amount (run this to run demo1)
 - `testCode(NOT MAIN CODE)`: folder that contains all of our prototyping for the project as well as a readme to explain what we were prototyping.
 - `CalibrateCamera.py`: Abstraction that calibrates the camera.
 - `calib_data.npz`: data used to calibrate the camera
