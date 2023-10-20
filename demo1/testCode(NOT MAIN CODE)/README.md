@@ -11,4 +11,4 @@ The `take20pictures` takes 20 pictures and was used to calibrate the camera
 
 `images` contains the 20 images taken using the `take20picture.py`
 
-`rotationalcontrol` contains code which is was used to prototype how we control the wheels of the robot. This i then later built off of on our final product
+`rotationalcontrol` contains code which is was used to prototype how we control the wheels of the robot. This ii then later built off of on our final product
