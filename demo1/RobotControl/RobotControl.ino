@@ -7,16 +7,16 @@ Utilize readme for function
 
 // Physical Constants of the robot
 #define BATTERY_VOLTAGE 8.2
-#define ROBOT_DIAMETER_IN_CM 36.5 * 1.0125 // 1.01 is determined empirically
+#define ROBOT_DIAMETER_IN_CM 36.5 * 1.0125 // 1.0125 is determined empirically
 #define WHEEL_DIAMETER_IN_CM 15.0
 
 // Tune to minimize slip
 #define MAX_PWM 100
 
-#define TARGET_ANGLE_IN_RADIANS PI/2.0
+#define TARGET_ANGLE_IN_RADIANS PI
 #define TARGET_DISTANCE_IN_FEET 1.0
 
-#define ERROR_BAND_ANGLE 0.005
+#define ERROR_BAND_ANGLE 0.0089 // Determined during testing
 #define WAIT_CYCLES_ANGLE 100 // Number of cycles to wait while angle settles. Each cycle is desiredTsMs ms long.
 
 // Rough Estimates - still require some fine tuning, but pretty decent steady state
