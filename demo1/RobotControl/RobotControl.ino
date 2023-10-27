@@ -16,7 +16,7 @@ Utilize readme for function
 #define TARGET_ANGLE_IN_RADIANS PI
 #define TARGET_DISTANCE_IN_FEET 1.0
 
-#define ERROR_BAND_ANGLE 0.0089 // Determined during testing
+#define ERROR_BAND_ANGLE 0.01285 // Determined during testing
 #define WAIT_CYCLES_ANGLE 100 // Number of cycles to wait while angle settles. Each cycle is desiredTsMs ms long.
 
 // Rough Estimates - still require some fine tuning, but pretty decent steady state
@@ -98,10 +98,10 @@ void setup() {
   pinMode(4, OUTPUT);
   digitalWrite(4, HIGH);
 
-  pinMode(7, OUTPUT); // Left H-Bridge
-  pinMode(8, OUTPUT); // Right H-Bridge
-  pinMode(9, OUTPUT); // Left power
-  pinMode(10, OUTPUT); // Right power
+  pinMode(7, OUTPUT); // Right H-Bridge
+  pinMode(8, OUTPUT); // Left H-Bridge
+  pinMode(9, OUTPUT); // Right power
+  pinMode(10, OUTPUT); // Left power
 
   // Timing
   lastTimeMs - millis();
@@ -168,23 +168,23 @@ void loop() {
 
   // H-Bridge Direction
   if(voltageLeft > 0) {
-    digitalWrite(7, HIGH);
-  } else {
-    digitalWrite(7, LOW);
-  }
-
-  if(voltageRight > 0) {
     digitalWrite(8, HIGH);
   } else {
     digitalWrite(8, LOW);
   }
 
+  if(voltageRight > 0) {
+    digitalWrite(7, HIGH);
+  } else {
+    digitalWrite(7, LOW);
+  }
+
   // Powering the motors
   int PWMLeft = min(MAX_PWM * abs(voltageLeft) / BATTERY_VOLTAGE, MAX_PWM);
-  analogWrite(9, PWMLeft);
+  analogWrite(10, PWMLeft);
 
   int PWMRight = min(MAX_PWM * abs(voltageRight) / BATTERY_VOLTAGE, MAX_PWM);
-  analogWrite(10, PWMRight);
+  analogWrite(9, PWMRight);
 
 
   // Set all previous values
@@ -194,7 +194,7 @@ void loop() {
   
   // Debugging Statements
 
-  if (currentTime < 3) {
+  if (currentTime < 20) {
     // Serial.print(currentTime, 3);
     // Serial.print("\t");
     // Serial.print(PWMLeft);
@@ -209,29 +209,29 @@ void loop() {
     // Serial.print("\t");
     // Serial.print(voltDelta, 3);
     // Serial.print("\t");
-    // Serial.print(voltageLeft);
-    // Serial.print("\t");
-    // Serial.print(voltageRight);
-    // Serial.print("\t");
-    // Serial.print(currentCountLeft);
-    // Serial.print("\t");
-    // Serial.print(currentCountRight);
-    // // Serial.print("\t");
-    // Serial.print(currentPos);
-    // Serial.print("\t");
-    // Serial.print(targetPos);
-    // Serial.print("\t");
-    // Serial.print(currentVelocity);
-    // Serial.print("\t");
-    // Serial.println(desiredVelocity);
+    Serial.print(voltageLeft);
+    Serial.print("\t");
+    Serial.print(voltageRight);
+    Serial.print("\t");
+    Serial.print(currentCountLeft);
+    Serial.print("\t");
+    Serial.print(currentCountRight);
+    Serial.print("\t");
+    Serial.print(currentPos);
+    Serial.print("\t");
+    Serial.print(targetPos);
+    Serial.print("\t");
+    Serial.print(currentVelocity);
+    Serial.print("\t");
+    Serial.print(desiredVelocity);
 
-    // Serial.print(desiredAngularVelocity);
-    // Serial.print("\t");
-    // Serial.print(targetAngle, 5);
-    // Serial.print("\t");
-    // Serial.print(currentAngle, 5);
-    // Serial.print("\t");
-    // Serial.println(targetAngle - currentAngle, 5);
+    Serial.print(desiredAngularVelocity);
+    Serial.print("\t");
+    Serial.print(targetAngle, 5);
+    Serial.print("\t");
+    Serial.print(currentAngle, 5);
+    Serial.print("\t");
+    Serial.println(targetAngle - currentAngle, 5);
   }
 
   while(millis() < lastTimeMs + desiredTsMs);
