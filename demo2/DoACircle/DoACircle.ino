@@ -113,8 +113,9 @@ void loop() {
   double desiredAngularVelocity;
   double desiredVelocity;
   if(abs(currentAngle) < 2.0 * PI) {
+    // This math has been triple checked. It is correct. (Hopefully)
     desiredVelocity = LINEAR_SPEED;
-    // desiredAngularVelocity = desiredVelocity / CIRCLE_RADIUS;
+    desiredAngularVelocity = desiredVelocity / CIRCLE_RADIUS;
   } else {
     desiredVelocity = 0;
     desiredAngularVelocity = 0;
