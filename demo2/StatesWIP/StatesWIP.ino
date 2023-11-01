@@ -149,7 +149,7 @@ void loop() {
 
   double targetAngle;
 
-  double desiredVelocity, desiredAngularVelocity, desiredPos;
+  double desiredVelocity, desiredAngularVelocity, desiredPos, desiredRadius;
 
   // Testing statements
   if (currentTime > 5) {
@@ -191,7 +191,7 @@ void loop() {
     //   break;
 
     case DRIVE_TO_MARK:
-      
+
       break;
 
     // case TURN_90:
