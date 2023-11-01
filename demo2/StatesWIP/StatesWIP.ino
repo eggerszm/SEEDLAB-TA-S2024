@@ -10,27 +10,43 @@ Utilize readme for function
 #define ROBOT_DIAMETER_IN_CM 36.5 * 1.0125 // 1.0125 is determined empirically
 #define WHEEL_DIAMETER_IN_CM 15.0
 
-// Parameters of the circle we want to do (in feet)
-#define CIRCLE_RADIUS 20.0
-
-#define LINEAR_SPEED 10.0 // Feet per second
-
-// Tune to minimize slip or go fast
+// Tune to minimize slip
 #define MAX_PWM 255
+
+#define TARGET_ANGLE_IN_RADIANS PI
+#define TARGET_DISTANCE_IN_FEET 1.0
+
+#define ERROR_BAND_ANGLE 0.1 // Determined during testing
+#define WAIT_CYCLES_ANGLE 100 // Number of cycles to wait while angle settles. Each cycle is desiredTsMs ms long.
 
 // Rough Estimates - still require some fine tuning, but pretty decent steady state
 #define KpANGLE 19.0 // NEEDS TUNING - Defines how fast it reaches the angle
-#define KdANGULAR_VELOCITY 0 // NEEDS TUNING
+#define KdANGULAR_VELOCITY 0.05 // NEEDS TUNING
 #define KpANGULAR_VELOCITY 19.0 // NEEDS TUNING- Defines Agrressiveness at accelerating to desired velocity
-#define KiANGULAR_VELOCITY 0 // NEEDS TUNING - 0.1
+#define KiANGULAR_VELOCITY 0.1 // NEEDS TUNING
 
-#define KiLINEAR 0.0 // 0.6
-#define KpLINEAR 3.0 // 3
+#define KiLINEAR 0.6 // .4
+#define KpLINEAR 0.8 // 3
 
 #define VSUM_SAT_BAND 1.8
 #define VDEL_SAT_BAND 1.6
 
+#define KpPOS 0.010
+#define KiPOS 0.00003
+
 #define desiredTsMs 5 // Desired sampling time in ms -- previously was 10, may want to change back
+
+#define SPIN_SPEED PI
+
+// States!
+enum States{
+  SPIN,
+  ANGLE_TO_MARK,
+  CAM_ANGLE_TO_MARK,
+  DRIVE_TO_MARK,
+  TURN_90,
+  DO_A_CIRCLE
+};
 
 double previousThetaRight = 0.0;
 double previousThetaLeft = 0.0;
@@ -50,9 +66,21 @@ double posIntegral;
 double angularVelocityError = 0;
 double angularVelocityIntegral = 0;
 
+// Info collected from Pi
+char distanceFromMark = 0xFF;
+char angleFromMark = 0xFF;
+
+
+enum States state = SPIN; // Start in SPIN state
+
 // Encoder setup
 Encoder EncLeft(3, 6); // Encoder on left wheel is pins 3 and 6
 Encoder EncRight(2, 5); // Encoder on right wheel is pins 2 and 5
+
+double AngularVelocity_P(double targetAngle, double currentAngle) {
+  double errorAngle = targetAngle - currentAngle;
+  return KpANGLE * errorAngle; // COULD ADD I AND/OR D control
+}
 
 double VoltDelta_PID(double targetAngularVelocity, double currentAngularVelocity, double previousAngularVelocityError) {
   angularVelocityError = targetAngularVelocity - currentAngularVelocity;
@@ -60,6 +88,13 @@ double VoltDelta_PID(double targetAngularVelocity, double currentAngularVelocity
   angularVelocityIntegral = angularVelocityIntegral + ( double(desiredTsMs) / 1000.0 ) * angularVelocityError;
 
   return (KpANGULAR_VELOCITY * angularVelocityError) + (KiANGULAR_VELOCITY * angularVelocityIntegral) + (KdANGULAR_VELOCITY * angularVelocityDerivative);
+}
+
+double LinearVelocity_PI(double targetPos, double currentPos) {
+  long errorPos = targetPos - currentPos;
+  posIntegral = Sat_d(posIntegral + ( double(desiredTsMs) / 1000.0 ) * errorPos, -10000.0, 10000.0);
+
+  return KpPOS * errorPos + KiPOS * posIntegral;  
 }
 
 double VoltSum_PI(double targetVelocity, double currentVelocity) {
@@ -90,7 +125,6 @@ void setup() {
   // Timing
   lastTimeMs - millis();
   startTimeMs = lastTimeMs;
-
 }
 
 void loop() {
@@ -105,39 +139,67 @@ void loop() {
   double thetaDotRight = (thetaRight - previousThetaRight) / desiredTsMs; // Right wheel angular velocity
   double thetaDotLeft = (thetaLeft - previousThetaLeft) / desiredTsMs; // Left wheel angular velocity
 
-  long currentPos = (currentCountLeft + currentCountRight) / 2; 
-  // If we haven't completed the circle, set target velocities
-
-  double currentAngle = WHEEL_DIAMETER_IN_CM / 2.0 * (thetaRight - thetaLeft) / ROBOT_DIAMETER_IN_CM;
-
-  double desiredAngularVelocity;
-  double desiredVelocity;
-  if(abs(currentAngle) < 2.0 * PI) {
-    // This math has been triple checked. It is correct. (Hopefully)
-    desiredVelocity = LINEAR_SPEED;
-    desiredAngularVelocity = desiredVelocity / CIRCLE_RADIUS;
-  } else {
-    desiredVelocity = 0;
-    desiredAngularVelocity = 0;
-  }
-
-  // Angular Control
-
-  // PD control on robot angle to find voltage
-  double currentAngularVelocity = WHEEL_DIAMETER_IN_CM / 2.0 * (thetaDotRight - thetaDotLeft) / ROBOT_DIAMETER_IN_CM;
-  double voltDelta = Sat_d(VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, previousAngularVelocityError), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
-
-  // Linear Control
-  double voltSum = 0;
- 
-
-  // PI control for linear velocity to find voltage
+  double currentPos = (currentCountLeft + currentCountRight) / 2.0;
   double currentVelocity = WHEEL_DIAMETER_IN_CM / 2.0 * (thetaDotRight + thetaDotLeft) / 2.0; // Average speed of the wheels is linear velocity measured in cm
 
-  voltSum = VoltSum_PI(desiredVelocity, currentVelocity);
-  
-  // voltSum shouldn't exceed 1.9x battery voltage to allow room for turning control
-  voltSum = Sat_d(voltSum, -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
+  double currentAngle = WHEEL_DIAMETER_IN_CM / 2.0 * (thetaRight - thetaLeft) / ROBOT_DIAMETER_IN_CM; // Current heading of the robot related to where it started
+  double currentAngularVelocity = WHEEL_DIAMETER_IN_CM / 2.0 * (thetaDotRight - thetaDotLeft) / ROBOT_DIAMETER_IN_CM;
+
+  double voltDelta, voltSum;
+
+  double targetAngle;
+
+  double desiredVelocity, desiredAngularVelocity, desiredPos;
+
+  // Testing statements
+  if (currentTime > 5) {
+    angleFromMark = char(-255);
+  }
+
+  // State Diagram
+  switch(state) {
+    case SPIN: // Spin until we find the marker
+
+      voltDelta = Sat_d(VoltDelta_PID(SPIN_SPEED, currentAngularVelocity, previousAngularVelocityError), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
+      desiredVelocity = LinearVelocity_PI(0, currentPos);
+      voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
+
+      // go to next state?
+      if (int(angleFromMark) != -1) {
+        state = ANGLE_TO_MARK;
+        EncLeft.write(0);
+        EncRight.write(0);
+        targetAngle = int(angleFromMark); // Will need to change to Fixed Point as determined later
+      }
+      break;
+
+    case ANGLE_TO_MARK:
+      desiredAngularVelocity = AngularVelocity_P(targetAngle, currentAngle);
+      voltDelta = Sat_d(VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, previousAngularVelocityError), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
+      desiredVelocity = LinearVelocity_PI(0, currentPos);
+      voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
+      
+      //go to next state?
+      if (abs(currentAngle - targetAngle) < ERROR_BAND_ANGLE) {
+        state = DRIVE_TO_MARK;
+        desiredPos = int(distanceFromMark);
+      }
+      
+      break;
+
+    // case CAM_ANGLE_TO_MARK:
+    //   break;
+
+    case DRIVE_TO_MARK:
+      
+      break;
+
+    // case TURN_90:
+    //   break;
+
+    // case DO_A_CIRCLE:
+    //   break;
+  }
 
   // Run Motors
 
@@ -172,9 +234,6 @@ void loop() {
   previousAngularVelocityError = angularVelocityError;
   
   // Debugging Statements
-
-  if (currentTime < 20) {
-  }
 
 
   while(millis() < lastTimeMs + desiredTsMs);
