@@ -11,7 +11,7 @@ Utilize readme for function
 #define WHEEL_DIAMETER_IN_CM 15.0
 
 // Parameters of the circle we want to do (in feet)
-#define CIRCLE_RADIUS 100.0
+#define CIRCLE_RADIUS 20.0
 
 #define LINEAR_SPEED 10.0 // Feet per second
 
