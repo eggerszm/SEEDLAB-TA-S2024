@@ -187,6 +187,8 @@ void loop() {
 
     case ANGLE_TO_MARK:
 
+      targetAngle = -PI;
+
       KdANGULAR_VELOCITY = 0.05;
       KpANGULAR_VELOCITY = 19.0;
       KiANGULAR_VELOCITY = 0.1;
@@ -216,14 +218,17 @@ void loop() {
       KpANGULAR_VELOCITY = 19.0;
       KiANGULAR_VELOCITY = 0.1;
 
+
       desiredAngularVelocity = AngularVelocity_P(targetAngle, currentAngle);
       desiredVelocity = LinearVelocity_PI(desiredPos, currentPos);
+
+      Serial.println(desiredVelocity);
 
       voltDelta = Sat_d(VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, previousAngularVelocityError), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
       voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
       
       // go to next state?
-      if (abs(currentPos - targetPos) < 2700) { //Are we within a foot?
+      if (abs(currentPos - desiredPos) < 2070) { //Are we within a foot?
         if (IS_CIRCLE_TIME) {
           state = TURN_90;
           EncLeft.write(0);
@@ -254,9 +259,13 @@ void loop() {
       voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
 
       // go to next state?
-      if (abs(currentAngle - targetAngle) < ERROR_BAND_ANGLE) {
+      if (abs(currentAngle - (PI/2.0) ) < ERROR_BAND_ANGLE) {
         state = DO_A_CIRCLE;
         angularVelocityIntegral = 0;
+        EncLeft.write(0);
+        EncRight.write(0);
+        currentPos = 0;
+        currentAngle = 0;
       }
       break;
 
@@ -274,7 +283,7 @@ void loop() {
       voltDelta = Sat_d(VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, 0), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
       voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
 
-      if(abs(currentAngle) < 2.0 * PI) {
+      if(abs(currentAngle) > 2.0 * PI) {
         state = STOP;
         EncLeft.write(0);
         EncRight.write(0);
@@ -330,7 +339,7 @@ void loop() {
   previousAngularVelocityError = angularVelocityError;
   
   // Debugging Statements
-
+  Serial.println(state);
 
   while(millis() < lastTimeMs + desiredTsMs);
   lastTimeMs = millis();
