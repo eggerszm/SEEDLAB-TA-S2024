@@ -5,6 +5,8 @@ Utilize readme for function
 */
 #include <Encoder.h>
 
+#define IS_CIRCLE_TIME true
+
 // Physical Constants of the robot
 #define BATTERY_VOLTAGE 8.2
 #define ROBOT_DIAMETER_IN_CM 36.5 * 1.0125 // 1.0125 is determined empirically
@@ -21,9 +23,7 @@ Utilize readme for function
 
 // Rough Estimates - still require some fine tuning, but pretty decent steady state
 #define KpANGLE 19.0 // NEEDS TUNING - Defines how fast it reaches the angle
-#define KdANGULAR_VELOCITY 0.05 // NEEDS TUNING
-#define KpANGULAR_VELOCITY 19.0 // NEEDS TUNING- Defines Agrressiveness at accelerating to desired velocity
-#define KiANGULAR_VELOCITY 0.1 // NEEDS TUNING
+
 
 #define KiLINEAR 0.6 // .4
 #define KpLINEAR 0.8 // 3
@@ -37,6 +37,7 @@ Utilize readme for function
 #define desiredTsMs 5 // Desired sampling time in ms -- previously was 10, may want to change back
 
 #define SPIN_SPEED PI
+#define CIRCLE_LINEAR_SPEED 10.0 //Feet per second
 
 // States!
 enum States{
@@ -45,8 +46,13 @@ enum States{
   CAM_ANGLE_TO_MARK,
   DRIVE_TO_MARK,
   TURN_90,
-  DO_A_CIRCLE
+  DO_A_CIRCLE,
+  STOP
 };
+
+double KdANGULAR_VELOCITY = 0.05; // NEEDS TUNING
+double KpANGULAR_VELOCITY = 19.0; // NEEDS TUNING- Defines Agrressiveness at accelerating to desired velocity
+double KiANGULAR_VELOCITY = 0.1; // NEEDS TUNING
 
 double previousThetaRight = 0.0;
 double previousThetaLeft = 0.0;
@@ -160,6 +166,10 @@ void loop() {
   switch(state) {
     case SPIN: // Spin until we find the marker
 
+      KdANGULAR_VELOCITY = 0.05;
+      KpANGULAR_VELOCITY = 19.0;
+      KiANGULAR_VELOCITY = 0.1;
+
       voltDelta = Sat_d(VoltDelta_PID(SPIN_SPEED, currentAngularVelocity, previousAngularVelocityError), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
       desiredVelocity = LinearVelocity_PI(0, currentPos);
       voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
@@ -169,11 +179,18 @@ void loop() {
         state = ANGLE_TO_MARK;
         EncLeft.write(0);
         EncRight.write(0);
+        currentPos = 0;
+        currentAngle = 0;
         targetAngle = int(angleFromMark); // Will need to change to Fixed Point as determined later
       }
       break;
 
     case ANGLE_TO_MARK:
+
+      KdANGULAR_VELOCITY = 0.05;
+      KpANGULAR_VELOCITY = 19.0;
+      KiANGULAR_VELOCITY = 0.1;
+
       desiredAngularVelocity = AngularVelocity_P(targetAngle, currentAngle);
       voltDelta = Sat_d(VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, previousAngularVelocityError), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
       desiredVelocity = LinearVelocity_PI(0, currentPos);
@@ -183,6 +200,7 @@ void loop() {
       if (abs(currentAngle - targetAngle) < ERROR_BAND_ANGLE) {
         state = DRIVE_TO_MARK;
         desiredPos = int(distanceFromMark);
+        angularVelocityIntegral = 0;
       }
       
       break;
@@ -192,15 +210,93 @@ void loop() {
 
     case DRIVE_TO_MARK:
 
+      desiredPos = 4 * 2070;
+
+      KdANGULAR_VELOCITY = 0.05;
+      KpANGULAR_VELOCITY = 19.0;
+      KiANGULAR_VELOCITY = 0.1;
+
+      desiredAngularVelocity = AngularVelocity_P(targetAngle, currentAngle);
+      desiredVelocity = LinearVelocity_PI(desiredPos, currentPos);
+
+      voltDelta = Sat_d(VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, previousAngularVelocityError), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
+      voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
+      
+      // go to next state?
+      if (abs(currentPos - targetPos) < 2700) { //Are we within a foot?
+        if (IS_CIRCLE_TIME) {
+          state = TURN_90;
+          EncLeft.write(0);
+          EncRight.write(0);
+          currentPos = 0;
+          currentAngle = 0;
+          desiredRadius = int(distanceFromMark);
+        } else {
+          state = STOP;
+          EncLeft.write(0);
+          EncRight.write(0);
+          currentPos = 0;
+          currentAngle = 0;
+        }
+      }
       break;
 
-    // case TURN_90:
-    //   break;
+    case TURN_90:
 
-    // case DO_A_CIRCLE:
-    //   break;
-  }
+      KdANGULAR_VELOCITY = 0.05;
+      KpANGULAR_VELOCITY = 19.0;
+      KiANGULAR_VELOCITY = 0.1;
 
+      desiredAngularVelocity = AngularVelocity_P(PI / 2.0, currentAngle);
+      desiredVelocity = LinearVelocity_PI(0.0, currentPos);
+
+      voltDelta = Sat_d(VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, previousAngularVelocityError), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
+      voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
+
+      // go to next state?
+      if (abs(currentAngle - targetAngle) < ERROR_BAND_ANGLE) {
+        state = DO_A_CIRCLE;
+        angularVelocityIntegral = 0;
+      }
+      break;
+
+    case DO_A_CIRCLE:
+
+      desiredRadius = 20.0;
+
+      KdANGULAR_VELOCITY = 0.0;
+      KpANGULAR_VELOCITY = 19.0;
+      KiANGULAR_VELOCITY = 0.0;
+
+      desiredVelocity = CIRCLE_LINEAR_SPEED;
+      desiredAngularVelocity = desiredVelocity / desiredRadius;
+
+      voltDelta = Sat_d(VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, 0), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
+      voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
+
+      if(abs(currentAngle) < 2.0 * PI) {
+        state = STOP;
+        EncLeft.write(0);
+        EncRight.write(0);
+        currentPos = 0;
+        currentAngle = 0;
+      }
+      break;
+
+    case STOP:
+
+      KdANGULAR_VELOCITY = 0.05;
+      KpANGULAR_VELOCITY = 19.0;
+      KiANGULAR_VELOCITY = 0.1;
+
+      desiredAngularVelocity = AngularVelocity_P(0, currentAngle);
+      desiredVelocity = LinearVelocity_PI(0.0, currentPos);
+
+      voltDelta = Sat_d(VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, previousAngularVelocityError), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
+      voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
+      break;
+    
+    }
   // Run Motors
 
   // Set voltages
