@@ -4,6 +4,7 @@ SEED LAB Team 9
 Utilize readme for function
 */
 #include <Encoder.h>
+#include <Wire.h>
 
 #define IS_CIRCLE_TIME true
 
@@ -11,6 +12,9 @@ Utilize readme for function
 #define BATTERY_VOLTAGE 8.2
 #define ROBOT_DIAMETER_IN_CM 36.5 * 1.0125 // 1.0125 is determined empirically
 #define WHEEL_DIAMETER_IN_CM 15.0
+
+// I2C Bus config
+#define MY_ADDR 8
 
 // Tune to minimize slip
 #define MAX_PWM 255
@@ -76,6 +80,9 @@ double angularVelocityIntegral = 0;
 char distanceFromMark = 0xFF;
 char angleFromMark = 0xFF;
 
+// Continously updated from i2c when the pi sends updates
+volatile float lastPiMeasuredDistance = -1.0;
+volatile float lastPiMeasuredAngle = 180.0;
 
 enum States state = SPIN; // Start in SPIN state
 
@@ -118,6 +125,10 @@ void setup() {
   // Serial Setup - mostly used for debugging
   Serial.begin(115200);
   Serial.println("Ready!"); // For ReadfromArduino.mlx
+
+  // Set up i2c communication from pi -> arduino
+  Wire.begin(MY_ADDR);
+  Wire.onReceive(receive);
 
   // Motor Pins
   pinMode(4, OUTPUT);
@@ -203,6 +214,10 @@ void loop() {
         state = DRIVE_TO_MARK;
         desiredPos = int(distanceFromMark);
         angularVelocityIntegral = 0;
+        targetAngle = 0;
+        currentAngle = 0;
+        EncLeft.write(0);
+        EncRight.write(0);
       }
       
       break;
@@ -252,14 +267,14 @@ void loop() {
       KpANGULAR_VELOCITY = 19.0;
       KiANGULAR_VELOCITY = 0.1;
 
-      desiredAngularVelocity = AngularVelocity_P(PI / 2.0, currentAngle);
+      desiredAngularVelocity = AngularVelocity_P(-PI / 2.0, currentAngle);
       desiredVelocity = LinearVelocity_PI(0.0, currentPos);
 
       voltDelta = Sat_d(VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, previousAngularVelocityError), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
       voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
 
       // go to next state?
-      if (abs(currentAngle - (PI/2.0) ) < ERROR_BAND_ANGLE) {
+      if (abs(currentAngle + (PI/2.0) ) < ERROR_BAND_ANGLE) {
         state = DO_A_CIRCLE;
         angularVelocityIntegral = 0;
         EncLeft.write(0);
@@ -271,7 +286,7 @@ void loop() {
 
     case DO_A_CIRCLE:
 
-      desiredRadius = 20.0;
+      desiredRadius = 30.0;
 
       KdANGULAR_VELOCITY = 0.0;
       KpANGULAR_VELOCITY = 19.0;
@@ -345,3 +360,24 @@ void loop() {
   lastTimeMs = millis();
 }
 
+void receive(int nbytes) {
+  char offset = Wire.read();
+
+  // Read in 
+  char in_data[4];
+  double out_data;
+  for(int i=0; i < nbytes-1; i++) {
+    in_data[i] = Wire.read();
+  }
+  memcpy(&out_data, in_data, 4);
+
+  // Offset dictates where the data goes
+  switch (offset) {
+    case 0:
+      lastPiMeasuredDistance = out_data;
+      break;
+    case 1:
+      lastPiMeasuredAngle = out_data;
+      break;
+  }
+}

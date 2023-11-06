@@ -39,10 +39,7 @@ void receive(int nbytes) {
 
       break;
     case 1:
-
+      
       break;
   }
-
-
-
 }

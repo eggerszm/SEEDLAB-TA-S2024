@@ -10,6 +10,8 @@ Utilize readme for function
 #define ROBOT_DIAMETER_IN_CM 36.5 * 1.0125 // 1.0125 is determined empirically
 #define WHEEL_DIAMETER_IN_CM 15.0
 
+
+
 // Parameters of the circle we want to do (in feet)
 #define CIRCLE_RADIUS 20.0
 
@@ -50,6 +52,7 @@ double posIntegral;
 double angularVelocityError = 0;
 double angularVelocityIntegral = 0;
 
+
 // Encoder setup
 Encoder EncLeft(3, 6); // Encoder on left wheel is pins 3 and 6
 Encoder EncRight(2, 5); // Encoder on right wheel is pins 2 and 5
@@ -77,6 +80,7 @@ void setup() {
   // Serial Setup - mostly used for debugging
   Serial.begin(115200);
   Serial.println("Ready!"); // For ReadfromArduino.mlx
+
 
   // Motor Pins
   pinMode(4, OUTPUT);
