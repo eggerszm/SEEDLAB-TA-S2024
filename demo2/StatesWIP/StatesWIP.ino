@@ -38,9 +38,9 @@ Utilize readme for function
 #define KpPOS 0.010
 #define KiPOS 0.00003
 
-#define desiredTsMs 5 // Desired sampling time in ms -- previously was 10, may want to change back
+#define desiredTsMs 10 // Desired sampling time in ms -- previously was 10, may want to change back
 
-#define SPIN_SPEED PI
+#define SPIN_SPEED PI / 10.0
 #define CIRCLE_LINEAR_SPEED 10.0 //Feet per second
 
 // States!
@@ -78,7 +78,7 @@ double angularVelocityIntegral = 0;
 
 // Continously updated from i2c when the pi sends updates
 volatile float lastPiMeasuredDistance = -1.0;
-volatile float lastPiMeasuredAngle = 180.0;
+volatile float lastPiMeasuredAngle = -1.0;
 
 enum States state = SPIN; // Start in SPIN state
 
@@ -135,19 +135,27 @@ void setup() {
   pinMode(9, OUTPUT); // Right power
   pinMode(10, OUTPUT); // Left power
 
+  // Test Pins
+  pinMode(11, OUTPUT);
+  pinMode(12, OUTPUT);
+
   // Timing
   lastTimeMs - millis();
   startTimeMs = lastTimeMs;
 }
 
+bool newDataFlag = false;
+
 void loop() {
   currentTime = (float)(lastTimeMs - startTimeMs)/1000;
 
+  digitalWrite(12, HIGH);
   long currentCountLeft = -EncLeft.read(); //Negative because this motor is facing "backwards"
   long currentCountRight = EncRight.read();
+  digitalWrite(12, LOW);
 
-  double thetaRight = 2.0 * PI * (double)currentCountRight / 3200.0; // Right wheel position in radians
-  double thetaLeft = 2.0 * PI* (double)currentCountLeft / 3200.0; // Left wheel position in radians
+  double thetaRight = (2.0 * PI * (double)currentCountRight) / 3200.0; // Right wheel position in radians
+  double thetaLeft = (2.0 * PI * (double)currentCountLeft) / 3200.0; // Left wheel position in radians
 
   double thetaDotRight = (thetaRight - previousThetaRight) / desiredTsMs; // Right wheel angular velocity
   double thetaDotLeft = (thetaLeft - previousThetaLeft) / desiredTsMs; // Left wheel angular velocity
@@ -155,8 +163,8 @@ void loop() {
   double currentPos = (currentCountLeft + currentCountRight) / 2.0;
   double currentVelocity = WHEEL_DIAMETER_IN_CM / 2.0 * (thetaDotRight + thetaDotLeft) / 2.0; // Average speed of the wheels is linear velocity measured in cm
 
-  double currentAngle = WHEEL_DIAMETER_IN_CM / 2.0 * (thetaRight - thetaLeft) / ROBOT_DIAMETER_IN_CM; // Current heading of the robot related to where it started
-  double currentAngularVelocity = WHEEL_DIAMETER_IN_CM / 2.0 * (thetaDotRight - thetaDotLeft) / ROBOT_DIAMETER_IN_CM;
+  double currentAngle = (WHEEL_DIAMETER_IN_CM / 2.0) * (thetaRight - thetaLeft) / ROBOT_DIAMETER_IN_CM; // Current heading of the robot related to where it started
+  double currentAngularVelocity = (WHEEL_DIAMETER_IN_CM / 2.0) * (thetaDotRight - thetaDotLeft) / ROBOT_DIAMETER_IN_CM; // Current change of heading in radians per second
 
   double voltDelta, voltSum;
 
@@ -179,7 +187,7 @@ void loop() {
 
       // go to next state?
       if (lastPiMeasuredAngle != -1) {
-        state = ANGLE_TO_MARK;
+        state = STOP;
         EncLeft.write(0);
         EncRight.write(0);
         currentPos = 0;
@@ -344,13 +352,42 @@ void loop() {
   previousAngularVelocityError = angularVelocityError;
   
   // Debugging Statements
-  // Serial.println(state);
+  if (newDataFlag) {
+    Serial.print(currentTime,3);
+    Serial.print("\t");
+    Serial.print(state);
+    Serial.print("\t");
+    Serial.print(currentPos);
+    Serial.print("\t");
+    Serial.print(currentCountLeft);
+    Serial.print("\t");
+    Serial.print(currentCountRight);
+    Serial.print("\t");
+    Serial.print(thetaLeft, 4);
+    Serial.print("\t");
+    Serial.print(thetaRight, 4);
+    Serial.print("\t");  
+    Serial.print(thetaDotLeft, 4);
+    Serial.print("\t");
+    Serial.print(thetaDotRight, 4);
+    Serial.print("\t");
+    Serial.print(currentAngularVelocity, 4);
+    Serial.print("\t");
+    Serial.println(currentAngle);
+    newDataFlag = false;
+  }
+
 
   while(millis() < lastTimeMs + desiredTsMs);
   lastTimeMs = millis();
 }
 
+
+
 void receive(int nbytes) {
+  noInterrupts();
+
+  digitalWrite(11, HIGH);
   char offset = Wire.read();
 
   // Read in 
@@ -370,4 +407,8 @@ void receive(int nbytes) {
       lastPiMeasuredAngle = out_data;
       break;
   }
+  digitalWrite(11, LOW);
+  interrupts();
+  newDataFlag = true;
+  
 }
