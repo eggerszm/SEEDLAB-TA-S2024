@@ -76,10 +76,6 @@ double posIntegral;
 double angularVelocityError = 0;
 double angularVelocityIntegral = 0;
 
-// Info collected from Pi
-char distanceFromMark = 0xFF;
-char angleFromMark = 0xFF;
-
 // Continously updated from i2c when the pi sends updates
 volatile float lastPiMeasuredDistance = -1.0;
 volatile float lastPiMeasuredAngle = 180.0;
@@ -168,10 +164,6 @@ void loop() {
 
   double desiredVelocity, desiredAngularVelocity, desiredPos, desiredRadius;
 
-  // Testing statements
-  if (currentTime > 5) {
-    angleFromMark = char(-255);
-  }
 
   // State Diagram
   switch(state) {
@@ -186,19 +178,17 @@ void loop() {
       voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
 
       // go to next state?
-      if (int(angleFromMark) != -1) {
+      if (lastPiMeasuredAngle != -1) {
         state = ANGLE_TO_MARK;
         EncLeft.write(0);
         EncRight.write(0);
         currentPos = 0;
         currentAngle = 0;
-        targetAngle = int(angleFromMark); // Will need to change to Fixed Point as determined later
+        targetAngle = lastPiMeasuredAngle;
       }
       break;
 
     case ANGLE_TO_MARK:
-
-      targetAngle = -PI;
 
       KdANGULAR_VELOCITY = 0.05;
       KpANGULAR_VELOCITY = 19.0;
@@ -212,7 +202,7 @@ void loop() {
       //go to next state?
       if (abs(currentAngle - targetAngle) < ERROR_BAND_ANGLE) {
         state = DRIVE_TO_MARK;
-        desiredPos = int(distanceFromMark);
+        desiredPos = (lastPiMeasuredDistance * 2070.0) / 12.0;
         angularVelocityIntegral = 0;
         targetAngle = 0;
         currentAngle = 0;
@@ -227,7 +217,7 @@ void loop() {
 
     case DRIVE_TO_MARK:
 
-      desiredPos = 4 * 2070;
+      // desiredPos = 4 * 2070; // Testing Statement
 
       KdANGULAR_VELOCITY = 0.05;
       KpANGULAR_VELOCITY = 19.0;
@@ -250,7 +240,7 @@ void loop() {
           EncRight.write(0);
           currentPos = 0;
           currentAngle = 0;
-          desiredRadius = int(distanceFromMark);
+          desiredRadius = lastPiMeasuredDistance;
         } else {
           state = STOP;
           EncLeft.write(0);
@@ -286,7 +276,7 @@ void loop() {
 
     case DO_A_CIRCLE:
 
-      desiredRadius = 30.0;
+      // desiredRadius = 30.0; // Testing statments
 
       KdANGULAR_VELOCITY = 0.0;
       KpANGULAR_VELOCITY = 19.0;
@@ -354,7 +344,7 @@ void loop() {
   previousAngularVelocityError = angularVelocityError;
   
   // Debugging Statements
-  Serial.println(state);
+  // Serial.println(state);
 
   while(millis() < lastTimeMs + desiredTsMs);
   lastTimeMs = millis();
