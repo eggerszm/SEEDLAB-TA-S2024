@@ -83,7 +83,7 @@ void setup() {
 
 
   // Motor Pins
-  pinMode(4, OUTPUT);
+  pinMode(4, OUTPUT); //enable pin for motor controller
   digitalWrite(4, HIGH);
 
   pinMode(7, OUTPUT); // Right H-Bridge

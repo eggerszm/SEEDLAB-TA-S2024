@@ -80,7 +80,7 @@ double angularVelocityIntegral = 0;
 float lastPiMeasuredDistance = NAN;
 float lastPiMeasuredAngle = NAN;
 
-enum States state = SPIN; // Start in SPIN state
+enum States state = TURN_90; // Start in SPIN state
 
 // Encoder setup
 Encoder EncLeft(3, 6); // Encoder on left wheel is pins 3 and 6
@@ -323,8 +323,9 @@ void loop() {
       break;
 
     case DO_A_CIRCLE:
+    //
 
-      // desiredRadius = 30.0; // Testing statments
+      desiredRadius = 30.0; // Testing statments
 
       KdANGULAR_VELOCITY = 0.0;
       KpANGULAR_VELOCITY = 19.0;
