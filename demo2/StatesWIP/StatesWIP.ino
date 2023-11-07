@@ -22,7 +22,7 @@ Utilize readme for function
 #define TARGET_ANGLE_IN_RADIANS PI
 #define TARGET_DISTANCE_IN_FEET 1.0
 
-#define ERROR_BAND_ANGLE 0.1 // Determined during testing
+#define ERROR_BAND_ANGLE 0.01 // Determined during testing
 #define WAIT_CYCLES_ANGLE 100 // Number of cycles to wait while angle settles. Each cycle is desiredTsMs ms long.
 
 // Rough Estimates - still require some fine tuning, but pretty decent steady state
@@ -79,6 +79,8 @@ double angularVelocityIntegral = 0;
 // Continously updated from i2c when the pi sends updates
 float lastPiMeasuredDistance = NAN;
 float lastPiMeasuredAngle = NAN;
+
+long settleCountTurn90 = 0;
 
 enum States state = TURN_90; // Start in SPIN state
 
@@ -301,9 +303,9 @@ void loop() {
 
     case TURN_90:
 
-      KdANGULAR_VELOCITY = 0.05;
-      KpANGULAR_VELOCITY = 19.0;
-      KiANGULAR_VELOCITY = 0.1;
+      KdANGULAR_VELOCITY = 0.00;
+      KpANGULAR_VELOCITY = 0.25;
+      KiANGULAR_VELOCITY = 0.2;
 
       desiredAngularVelocity = AngularVelocity_P(-PI / 2.0, currentAngle);
       desiredVelocity = LinearVelocity_PI(0.0, currentPos);
@@ -313,8 +315,12 @@ void loop() {
 
       // go to next state?
       if (abs(currentAngle + (PI/2.0) ) < ERROR_BAND_ANGLE) {
+        settleCountTurn90++;
+      }
+      if (settleCountTurn90 >= 50) {
         state = DO_A_CIRCLE;
-        angularVelocityIntegral = 0;
+        angularVelocityIntegral = 0.0;
+        velocityIntegral = 0.0;
         EncLeft.write(0);
         EncRight.write(0);
         currentPos = 0;
