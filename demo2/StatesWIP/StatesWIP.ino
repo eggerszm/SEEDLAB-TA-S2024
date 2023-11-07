@@ -6,7 +6,7 @@ Utilize readme for function
 #include <Encoder.h>
 #include <Wire.h>
 
-#define IS_CIRCLE_TIME false
+#define IS_CIRCLE_TIME true
 
 // Physical Constants of the robot
 #define BATTERY_VOLTAGE 8.2
@@ -77,10 +77,10 @@ double angularVelocityError = 0;
 double angularVelocityIntegral = 0;
 
 // Continously updated from i2c when the pi sends updates
-volatile float lastPiMeasuredDistance = -1.0;
-volatile float lastPiMeasuredAngle = -1.0;
+float lastPiMeasuredDistance = NAN;
+float lastPiMeasuredAngle = NAN;
 
-enum States state = DRIVE_TO_MARK; // Start in SPIN state
+enum States state = SPIN; // Start in SPIN state
 
 // Encoder setup
 Encoder EncLeft(3, 6); // Encoder on left wheel is pins 3 and 6
@@ -145,8 +145,13 @@ void setup() {
   lastTimeMs - millis();
   startTimeMs = lastTimeMs;
 
-  while(millis() < 1000);
-  desiredPos = (lastPiMeasuredDistance * 2070.0) / 12.0;
+  // while(millis() < 1000);
+  // if (lastPiMeasuredDistance != NAN) {
+  //   desiredPos = ((lastPiMeasuredDistance * 2070.0) / 12.0) - 2070.0;
+  // } 
+  // else {
+  //   desiredPos = -1 * 2070; //Desired pos is -1 foot if aruco marker not found
+  // }
 }
 
 bool newDataFlag = false;
@@ -182,6 +187,12 @@ void loop() {
   switch(state) {
     case SPIN: // Spin until we find the marker
 
+      // Serial.print("SPINNING!!  ");
+      // Serial.print("Read Angle: ");
+      // Serial.print(lastPiMeasuredAngle);
+      // Serial.print(" Read Distance: ");
+      // Serial.println(lastPiMeasuredDistance);
+
       KdANGULAR_VELOCITY = 0.05;
       KpANGULAR_VELOCITY = 19.0;
       KiANGULAR_VELOCITY = 0.1;
@@ -191,7 +202,10 @@ void loop() {
       voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
 
       // go to next state?
-      if (lastPiMeasuredAngle != -1) {
+      if ( !isnan(lastPiMeasuredAngle) ) {
+        // Serial.print("Read Angle: ");
+        // Serial.print(lastPiMeasuredAngle);
+        // Serial.println(" Moving to next state");
         state = ANGLE_TO_MARK;
         EncLeft.write(0);
         EncRight.write(0);
@@ -202,6 +216,13 @@ void loop() {
       break;
 
     case ANGLE_TO_MARK:
+
+      // Serial.print("ANGLING!!  ");
+      // Serial.print("Read Angle: ");
+      // Serial.print(lastPiMeasuredAngle);
+      // Serial.print(" Read Distance: ");
+      // Serial.println(lastPiMeasuredDistance);
+
 
       KdANGULAR_VELOCITY = 0.05;
       KpANGULAR_VELOCITY = 19.0;
@@ -218,7 +239,7 @@ void loop() {
         EncRight.write(0);
         // if (abs(lastPiMeasuredAngle) < ERROR_BAND_ANGLE) {
           state = DRIVE_TO_MARK;
-          desiredPos = (lastPiMeasuredDistance * 2070.0) / 12.0;
+          desiredPos = (lastPiMeasuredDistance * 172.5 - 2070); //172.5 counts per inch
           angularVelocityIntegral = 0;
           targetAngle = 0;
           currentAngle = 0;
@@ -238,8 +259,8 @@ void loop() {
 
       // lastPiMeasuredAngle = 48.0;
 
-      // if (lastPiMeasuredDistance != -1 && ((lastPiMeasuredDistance * 2070.0) / 12.0) != desiredPos) {
-      //   desiredPos = (lastPiMeasuredDistance * 2070.0) / 12.0;
+      // if ( !isnan(lastPiMeasuredDistance) && ((lastPiMeasuredDistance * 172.5) - 2070.0) != desiredPos) {
+      //   desiredPos = (lastPiMeasuredDistance * 172.5) - 2070.0;
       //   EncLeft.write(0);
       //   EncRight.write(0);
       // }
@@ -252,24 +273,24 @@ void loop() {
       desiredAngularVelocity = AngularVelocity_P(0.0, currentAngle);
       desiredVelocity = LinearVelocity_PI(desiredPos, currentPos);
 
-      Serial.print(currentPos);
-      Serial.print("\t");
-      Serial.println(desiredPos);
+      // Serial.print(currentPos);
+      // Serial.print("\t");
+      // Serial.println(desiredPos);
 
       voltDelta = Sat_d(VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, previousAngularVelocityError), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
       voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
       
       // go to next state?
-      if (abs(currentPos - desiredPos) < 2070) { //Are we within a foot?
+      if (desiredPos - currentPos < 0) { //Are we within a foot?
         if (IS_CIRCLE_TIME) {
-          state = DO_A_CIRCLE;
+          state = TURN_90;
           EncLeft.write(0);
           EncRight.write(0);
           currentPos = 0;
           currentAngle = 0;
-          desiredRadius = lastPiMeasuredDistance;
+          desiredRadius = 30.0;
         } else {
-          // state = STOP;
+          state = STOP;
           EncLeft.write(0);
           EncRight.write(0);
           currentPos = 0;
@@ -326,15 +347,18 @@ void loop() {
 
     case STOP:
 
-      KdANGULAR_VELOCITY = 0.05;
-      KpANGULAR_VELOCITY = 19.0;
-      KiANGULAR_VELOCITY = 0.1;
+      // KdANGULAR_VELOCITY = 0.05;
+      // KpANGULAR_VELOCITY = 19.0;
+      // KiANGULAR_VELOCITY = 0.1;
 
-      desiredAngularVelocity = AngularVelocity_P(0, currentAngle);
-      desiredVelocity = LinearVelocity_PI(0.0, currentPos);
+      // desiredAngularVelocity = AngularVelocity_P(0, currentAngle);
+      // desiredVelocity = LinearVelocity_PI(0.0, currentPos);
 
-      voltDelta = Sat_d(VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, previousAngularVelocityError), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
-      voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
+      // voltDelta = Sat_d(VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, previousAngularVelocityError), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
+      // voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
+
+      voltSum = 0;
+      voltDelta = 0;
       break;
     
     }
@@ -372,9 +396,9 @@ void loop() {
   
   // Debugging Statements
   if (newDataFlag) {
-    Serial.print(currentTime,3);
-    Serial.print("\t");
-    Serial.println(state);
+    // Serial.print(currentTime,3);
+    // Serial.print("\t");
+    // Serial.println(state);
     // Serial.print("\t");
     // Serial.print(currentPos);
     // Serial.print("\t");
@@ -410,22 +434,16 @@ void receive(int nbytes) {
   char offset = Wire.read();
 
   // Read in 
-  char in_data[4];
+  char in_data[8];
   double out_data;
   for(int i=0; i < nbytes-1; i++) {
     in_data[i] = Wire.read();
   }
-  memcpy(&out_data, in_data, 4);
+  memcpy(&lastPiMeasuredAngle, &(in_data[0]), 4);
+  memcpy(&lastPiMeasuredDistance, &(in_data[4]), 4);
 
-  // Offset dictates where the data goes
-  switch (offset) {
-    case 0:
-      lastPiMeasuredDistance = out_data;
-      break;
-    case 1:
-      lastPiMeasuredAngle = out_data;
-      break;
-  }
+
+
   digitalWrite(11, LOW);
   // interrupts();
   newDataFlag = true;
