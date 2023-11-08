@@ -17,12 +17,13 @@
 #define TURN_TO_MARKER_ERROR_BAND 0.01
 #define ANGLE_ERROR_BAND 0.01
 
-#define IS_CIRCLE_TIME true
+#define IS_CIRCLE_TIME false
 
 // Define States
 enum State {
   FIND_MARKER,
   TURN_TO_MARKER,
+  ANGLE_CHECK,
   DRIVE_TO_MARKER,
   TURN_RIGHT,
   DO_A_CIRCLE,
@@ -32,20 +33,22 @@ enum State {
 // Define Globals
 double lastTimeMs, startTimeMs;
 State currState = FIND_MARKER;
-
 double previousThetaLeft = 0.0, previousThetaRight = 0.0;
 
 double integralValX = 0.0, integralValAngle = 0.0, integralValRho = 0.0, integralValOmega = 0.0;
 double prevErrorX = 0.0, prevErrorAngle = 0.0, prevErrorRho = 0.0, prevErrorOmega = 0.0;
 
-double lastPiMeasuredAngle, lastPiMeasuredDistance;
+double lastPiMeasuredAngle = NAN, lastPiMeasuredDistance = NAN;
 int settleCountTurnRight = 0;
+int settleCountTurnMark = 0;
+int angleCheckCount = 0;
 
 double desiredPos = 0.0, desiredAngle = 0.0;
 
 // Initialize Encoders
 Encoder EncLeft(3, 6); // Encoder on left wheel is pins 3 and 6 -- Could use #defines for this later
 Encoder EncRight(2, 5); // Encoder on right wheel is pins 2 and 5
+
 
 void setup() {
   Serial.begin(115200);
@@ -81,8 +84,8 @@ void loop() {
   double kIOmega = 0.1;
   double kDOmega = 0.05;
 
-  double kPRho = 0.8;
-  double kIRho = 0.6;
+  double kPRho = 0.1;
+  double kIRho = 0.05;
   double kDRho = 0.0;
 
   double kPX = 0.01;
@@ -103,27 +106,53 @@ void loop() {
 
       desiredPos = 0;
 
+      kPRho = 0.8;
+      kIRho = 0.6;
+
       if( !isnan(lastPiMeasuredAngle) ) {
         moveStateFlag = true;
-        desiredAngle = lastPiMeasuredAngle;
+        if (currentTime < 1.0) {
+          desiredAngle = lastPiMeasuredAngle;
+        } else {
+          desiredAngle = lastPiMeasuredAngle - 0.2;
+        }
+
+
         currState = TURN_TO_MARKER;
       }
       break;
 
     case TURN_TO_MARKER:
 
-      if ( abs(currentAngle - desiredAngle) < TURN_TO_MARKER_ERROR_BAND ) {
+      if ( abs(currentAngle - desiredAngle ) < TURN_TO_MARKER_ERROR_BAND ) {
+        settleCountTurnMark++;
+      }
+
+      if  ( settleCountTurnMark >= 50 && !isnan(lastPiMeasuredDistance)) {
         moveStateFlag = true;
         desiredPos = (lastPiMeasuredDistance * COUNTS_PER_INCH) - COUNTS_PER_FOOT;
         currState = DRIVE_TO_MARKER;
       }
       break;
 
+    // case ANGLE_CHECK:
+      
+    //   if (++angleCheckCount >= 200) {
+    //     moveStateFlag = true;
+    //     if (abs(lastPiMeasuredAngle) < TURN_TO_MARKER_ERROR_BAND) {
+    //       currState = DRIVE_TO_MARKER;
+    //     } else {
+    //       desiredAngle = lastPiMeasuredAngle;
+    //       currState = TURN_TO_MARKER;
+    //     }
+    //   }
+
     case DRIVE_TO_MARKER:
 
       desiredAngle = 0.0;
+      // desiredPos = 4.0 * COUNTS_PER_FOOT;
 
-      if ( desiredPos - currentPos < 0 ) {
+      if ( (desiredPos - currentPos < 0) ) {
         moveStateFlag = true;
         if (IS_CIRCLE_TIME) {
           currState = TURN_RIGHT;
@@ -170,6 +199,8 @@ void loop() {
     integralValOmega = 0;
     integralValRho = 0;
     integralValX = 0;
+    angleCheckCount = 0;
+    settleCountTurnMark = 0;
   }
 
   switch(currState) { // Fall thru to run controllers and find desiredRho, desiredOmega
@@ -187,22 +218,40 @@ void loop() {
       break;
 
     case DO_A_CIRCLE: // omega, rho
+    case ANGLE_CHECK:
       desiredRho = CIRCLE_LINEAR_SPEED;
       desiredOmega = CIRCLE_LINEAR_SPEED / DESIRED_RADIUS;
       break;
   }
 
-  double voltSum = PID(desiredOmega, currentOmega, DESIRED_TS_MS, kPOmega, kIOmega, kDOmega, &integralValOmega, &prevErrorOmega);
-  double voltDelta = PID(desiredRho, currentRho, DESIRED_TS_MS, kPRho, kIRho, kDRho, &integralValRho, &prevErrorRho);
+  double voltDelta = PID(desiredOmega, currentOmega, DESIRED_TS_MS, kPOmega, kIOmega, kDOmega, &integralValOmega, &prevErrorOmega);
+  double voltSum = PID(desiredRho, currentRho, DESIRED_TS_MS, kPRho, kIRho, kDRho, &integralValRho, &prevErrorRho);
 
   RunMotors(voltSum, voltDelta);
 
   previousThetaLeft = thetaLeft;
   previousThetaRight = thetaRight;
 
-  Serial.print(voltSum);
+
+  Serial.print(currentTime);
   Serial.print("\t");
-  Serial.println(voltDelta);
+  Serial.print(currState);
+  Serial.print("\t");
+  Serial.print(lastPiMeasuredAngle);
+  Serial.print("\t");
+  // Serial.print(currentPos - desiredPos , 4);
+  // Serial.print("\t");
+  Serial.print(currentAngle - desiredAngle, 4);
+  Serial.println("\t");
+  // Serial.print(currentRho - desiredRho);
+  // Serial.print("\t");
+  // Serial.print(currentOmega - desiredOmega);
+  // Serial.print("\t");
+  // Serial.print(voltSum);
+  // Serial.print("\t");
+  // Serial.println(voltDelta);
+  // Serial.println();
+
 
 
   while(millis() < lastTimeMs + DESIRED_TS_MS);

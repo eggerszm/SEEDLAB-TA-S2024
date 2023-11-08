@@ -8,12 +8,13 @@
 
 void SetupMotors() {
   pinMode(MOTOR_ENB_PIN, OUTPUT);
-  pinMode(MOTOR_ENB_PIN, HIGH);
+  digitalWrite(MOTOR_ENB_PIN, HIGH);
 
   pinMode(RIGHT_MOTOR_DIR_PIN, OUTPUT);
   pinMode(LEFT_MOTOR_DIR_PIN, OUTPUT);
   pinMode(RIGHT_MOTOR_PIN, OUTPUT);
   pinMode(LEFT_MOTOR_PIN, OUTPUT);
+
 }
 
 void RunMotors(double voltSum, double voltDelta) {
@@ -35,12 +36,12 @@ void RunMotors(double voltSum, double voltDelta) {
   }
 
   // Powering the motors
-  int PWMLeft = min(MAX_PWM * abs(voltageLeft), MAX_PWM);
+  int PWMLeft = min((MAX_PWM * abs(voltageLeft)) / 8.0 , MAX_PWM);
   analogWrite(LEFT_MOTOR_PIN, PWMLeft);
 
-  int PWMRight = min(MAX_PWM * abs(voltageRight), MAX_PWM);
+  int PWMRight = min((MAX_PWM * abs(voltageRight)) / 8.0, MAX_PWM);
   analogWrite(RIGHT_MOTOR_PIN, PWMRight);
 
-  Serial.print("Running Motors: ");
-  Serial.println(PWMLeft);
+  // Serial.print("Running Motors: ");
+  // Serial.println(PWMLeft);
 }
