@@ -30,9 +30,11 @@ Utilize readme for function
 
 
 #define KiLINEAR 0.6 // .4
-#define KpLINEAR 0.8 // 3
+#define KpLINEAR 0.8 // 0.8
 
 #define VSUM_SAT_BAND 1.8
+
+
 #define VDEL_SAT_BAND 1.6
 
 #define KpPOS 0.010
@@ -41,7 +43,7 @@ Utilize readme for function
 #define desiredTsMs 10 // Desired sampling time in ms -- previously was 10, may want to change back
 
 #define SPIN_SPEED PI / 20.0
-#define CIRCLE_LINEAR_SPEED 10.0 //Feet per second
+#define CIRCLE_LINEAR_SPEED 10 // cm per second
 
 // States!
 enum States{
@@ -82,7 +84,7 @@ float lastPiMeasuredAngle = NAN;
 
 long settleCountTurn90 = 0;
 
-enum States state = TURN_90; // Start in SPIN state
+enum States state = DO_A_CIRCLE; // Start in SPIN state
 
 // Encoder setup
 Encoder EncLeft(3, 6); // Encoder on left wheel is pins 3 and 6
@@ -304,7 +306,7 @@ void loop() {
     case TURN_90:
 
       KdANGULAR_VELOCITY = 0.00;
-      KpANGULAR_VELOCITY = 0.25;
+      KpANGULAR_VELOCITY = 19.0;
       KiANGULAR_VELOCITY = 0.2;
 
       desiredAngularVelocity = AngularVelocity_P(-PI / 2.0, currentAngle);
@@ -312,6 +314,18 @@ void loop() {
 
       voltDelta = Sat_d(VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, previousAngularVelocityError), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
       voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
+
+      Serial.print(state);
+      Serial.print("\t");
+      Serial.print(currentAngle);
+      Serial.print("\t");
+      Serial.print(desiredAngularVelocity);
+      Serial.print("\t");
+      Serial.print(desiredVelocity);
+      Serial.print("\t");
+      Serial.print(voltDelta);
+      Serial.print("\t");
+      Serial.println(voltSum);
 
       // go to next state?
       if (abs(currentAngle + (PI/2.0) ) < ERROR_BAND_ANGLE) {
@@ -329,19 +343,37 @@ void loop() {
       break;
 
     case DO_A_CIRCLE:
-    //
+    
 
-      desiredRadius = 30.0; // Testing statments
+      desiredRadius = 38.1; // Testing statments
 
       KdANGULAR_VELOCITY = 0.0;
-      KpANGULAR_VELOCITY = 19.0;
+      KpANGULAR_VELOCITY = 19.1;
       KiANGULAR_VELOCITY = 0.0;
+      
+      
 
       desiredVelocity = CIRCLE_LINEAR_SPEED;
       desiredAngularVelocity = desiredVelocity / desiredRadius;
 
-      voltDelta = Sat_d(VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, 0), -VDEL_SAT_BAND * BATTERY_VOLTAGE, VDEL_SAT_BAND * BATTERY_VOLTAGE );
-      voltSum = Sat_d(VoltSum_PI(desiredVelocity, currentVelocity), -VSUM_SAT_BAND*BATTERY_VOLTAGE, VSUM_SAT_BAND*BATTERY_VOLTAGE);
+      Serial.print(state);
+      Serial.print("\t");
+      Serial.print(currentAngle, 4);
+      Serial.print("\t");
+      Serial.print(desiredAngularVelocity, 4);
+      Serial.print("\t");
+      Serial.print(currentAngularVelocity, 4);
+      Serial.print("\t");
+      Serial.print(desiredVelocity, 4);
+      Serial.print("\t");
+      Serial.print(currentVelocity, 4);
+      Serial.print("\t");
+      Serial.print(voltDelta);
+      Serial.print("\t");
+      Serial.println(voltSum);
+
+      voltDelta = VoltDelta_PID(desiredAngularVelocity, currentAngularVelocity, 0);
+      voltSum = VoltSum_PI(desiredVelocity, currentVelocity);
 
       if(abs(currentAngle) > 2.0 * PI) {
         state = STOP;
