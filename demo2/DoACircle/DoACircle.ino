@@ -13,7 +13,7 @@ Utilize readme for function
 
 
 // Parameters of the circle we want to do (in feet)
-#define CIRCLE_RADIUS 20.0
+#define CIRCLE_RADIUS 50.0
 
 #define LINEAR_SPEED 10.0 // Feet per second
 
@@ -83,7 +83,7 @@ void setup() {
 
 
   // Motor Pins
-  pinMode(4, OUTPUT);
+  pinMode(4, OUTPUT); //enable pin for motor controller
   digitalWrite(4, HIGH);
 
   pinMode(7, OUTPUT); // Right H-Bridge
