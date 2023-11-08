@@ -6,7 +6,7 @@
 #define ROBOT_DIAMETER_IN_CM 36.947125 // Determined empirically
 #define DESIRED_TS_MS 10.0 
 
-#define DESIRED_RADIUS 38.1
+#define DESIRED_RADIUS 6.0
 
 #define COUNTS_PER_FOOT 2070.0
 #define COUNTS_PER_INCH 172.5
@@ -17,7 +17,7 @@
 #define TURN_TO_MARKER_ERROR_BAND 0.01
 #define ANGLE_ERROR_BAND 0.01
 
-#define IS_CIRCLE_TIME false
+#define IS_CIRCLE_TIME true
 
 // Define States
 enum State {
@@ -114,7 +114,7 @@ void loop() {
         if (currentTime < 1.0) {
           desiredAngle = lastPiMeasuredAngle;
         } else {
-          desiredAngle = lastPiMeasuredAngle - 0.2;
+          desiredAngle = lastPiMeasuredAngle - 0.25;
         }
 
 
@@ -179,6 +179,14 @@ void loop() {
 
     case DO_A_CIRCLE:
 
+      kPOmega = 1.0;
+      kIOmega = 0.0;
+      kDOmega = 0.0;
+
+      kPRho = 1.0;
+      kIRho = 0.0;
+      kDRho = 0.0;
+
       if (currentAngle > 2.0 * PI) {
         moveStateFlag = true;
         currState = STOP;
@@ -233,19 +241,19 @@ void loop() {
   previousThetaRight = thetaRight;
 
 
-  Serial.print(currentTime);
-  Serial.print("\t");
-  Serial.print(currState);
-  Serial.print("\t");
-  Serial.print(lastPiMeasuredAngle);
-  Serial.print("\t");
-  // Serial.print(currentPos - desiredPos , 4);
+  // Serial.print(currentTime);
   // Serial.print("\t");
-  Serial.print(currentAngle - desiredAngle, 4);
-  Serial.println("\t");
-  // Serial.print(currentRho - desiredRho);
+  // // Serial.print(currState);
+  // // Serial.print("\t");
+  // // Serial.print(lastPiMeasuredAngle);
+  // // Serial.print("\t");
+  // // Serial.print(currentPos - desiredPos , 4);
+  // // Serial.print("\t");
+  // // Serial.print(currentAngle - desiredAngle, 4);
+  // // Serial.println("\t");
+  // Serial.print(currentRho, 4);
   // Serial.print("\t");
-  // Serial.print(currentOmega - desiredOmega);
+  // Serial.print(currentOmega, 4);
   // Serial.print("\t");
   // Serial.print(voltSum);
   // Serial.print("\t");
