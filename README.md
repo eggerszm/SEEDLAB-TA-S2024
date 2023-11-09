@@ -18,3 +18,11 @@ All code and documentation of demo 1 is located in the `demo1` directory
 - `testCode(NOT MAIN CODE)`: folder that contains all of our prototyping for the project as well as a readme to explain what we were prototyping.
 - `CalibrateCamera.py`: Abstraction that calibrates the camera.
 - `calib_data.npz`: data used to calibrate the camera
+
+# Demo 2
+All code and documentation of demo 2 is located in the `demo2` directory
+- `demoSendDist.py`: Contains code for the Raspberry pi which measures the angel between the aruco marker and the camera as well as measure the distance from the robot to the aruco marker 
+- `Demo2Rework`: Contains code for the arduion which rotates the robot, stops when the camera sends the distance and angle, aproaches the aruco marker and stopping with in a foot of the marker, and finally circling the marker.
+- `README.md`: Project-specific overview and documentation
+- `calib_data.npz`: data used to calibrate the camera
+- `testCode(NOT MAIN CODE)`: folder that contains all of our prototyping for the project as well as a readme to explain what we were prototyping.
