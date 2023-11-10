@@ -1,3 +1,13 @@
+/*
+Motor Functions
+SEED Lab Group 9
+Zander Eggers, Gideon Kukoyi, James Clark, Elijah Price
+November 7th 2023
+
+Uses H Bridge motor driver to control motors
+Uses voltSum and voltDelta to fit control scheme
+*/
+
 #define RIGHT_MOTOR_PIN 9
 #define LEFT_MOTOR_PIN 10
 #define RIGHT_MOTOR_DIR_PIN 7
@@ -41,7 +51,4 @@ void RunMotors(double voltSum, double voltDelta) {
 
   int PWMRight = min((MAX_PWM * abs(voltageRight)) / 8.0, MAX_PWM);
   analogWrite(RIGHT_MOTOR_PIN, PWMRight);
-
-  // Serial.print("Running Motors: ");
-  // Serial.println(PWMLeft);
 }

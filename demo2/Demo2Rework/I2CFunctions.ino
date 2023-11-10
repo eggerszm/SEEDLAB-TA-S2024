@@ -1,3 +1,12 @@
+/*
+I2C Functions
+SEED Lab Group 9
+Zander Eggers, Gideon Kukoyi, James Clark, Elijah Price
+November 7th 2023
+
+Uses Wire library to communicate over I2C
+*/
+
 #define MY_ADDR 8
 
 void SetupI2C() {
