@@ -1,12 +1,14 @@
 """Intial proof of concept mapping code for 6 aruco markers"""
 
 import cv2
+import math
 import numpy as np
 from cv2 import aruco
 
 import matplotlib.pyplot as plt
 
 import cameraConfig
+import transformations as tf
 
 MARKER_SIZE = 8.5 # cm-ish, tuning constant
 
@@ -37,21 +39,28 @@ def main():
         overlay = cv2.line(overlay, (int(640/2), 0), (int(640/2), 480), (0,0,255), 1)
 
         # Estimate pose of each detected marker
-        poses = np.zeros((6,2))
+        poses = np.zeros((6,3))
+        poses_rot = np.zeros((6,3))
         if len(corners) > 0:
             print("One Image:")
             for i in range(0, len(ids)):
                 rv, tv, _ = aruco.estimatePoseSingleMarkers(corners[i], MARKER_SIZE, mtx, dist_mtx)
-                poses[ids[i], 0] = tv[0, 0, 0]
-                poses[ids[i], 1] = tv[0, 0, 2]
+                poses[ids[i], :] = tv[0, 0, :]
 
-
+        # Rotate points by 45 deg left
+        for i in range(0, 6):
+            poses_rot[i, :] = tf.rotate_y(poses[i, :], 0)
 
         cv2.imshow("Detected Markers", overlay)
 
+        print(poses, poses_rot)
+
         # Plotting for testing
-        fig, ax = plt.subplots()
-        ax.scatter(poses[:, 0], poses[:, 1])
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='3d')
+        ax.scatter(0,0,0)
+        ax.scatter(poses[:, 0], poses[:, 2], poses[:, 1])
+        ax.scatter(poses_rot[:, 0], poses_rot[:, 2], poses_rot[:, 1])
         plt.show()
 
         if cv2.waitKey(1) & 0xFF == ord('q'):

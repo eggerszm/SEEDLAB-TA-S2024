@@ -4,7 +4,7 @@ import math
 import numpy as np
 
 def rotate_y(point, angle):
-    rotation_mtx = np.array([[math.cos(angle), 0, math.sin(angle)], [0, 1, 0], [-math.sin(angle), 0, -math.cos(angle)]])
+    rotation_mtx = np.array([[-math.cos(angle), 0.0, -math.sin(angle)], [0.0, 1.0, 0.0], [math.sin(angle), 0.0, math.cos(angle)]])
     
     return np.matmul(rotation_mtx, point)
 
