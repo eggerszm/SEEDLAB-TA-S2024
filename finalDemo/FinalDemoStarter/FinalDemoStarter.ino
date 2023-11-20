@@ -1,5 +1,5 @@
 /*
-Demo 2 Reworked Code
+Final Demo Starter
 SEED Lab Group 9
 Zander Eggers, Gideon Kukoyi, James Clark, Elijah Price
 November 7th 2023
@@ -30,7 +30,7 @@ To Use:
 
 #define DESIRED_RADIUS 6.0
 
-#define COUNTS_PER_FOOT 2070.0
+#define COUNTS_PER_FOOT 2 * 2070.0
 #define COUNTS_PER_INCH 172.5
 
 #define SPIN_RATE PI / 20.0 // Ensure this value is not too fast to allow camera to see marker
@@ -49,13 +49,28 @@ enum State {
   DRIVE_TO_MARKER,
   TURN_RIGHT,
   DO_A_CIRCLE,
+  START_TEST,
+  TURN_TO_XY,
+  DRIVE_TO_XY,
   STOP
 };
 
+// Testing Array -- Values given in counts to make a regular hexagon of "radius" 1 ft
+double xyMatrix[7][2] = { {COUNTS_PER_FOOT, 0.0},
+                          {COUNTS_PER_FOOT / 2.0, 0.866025 * COUNTS_PER_FOOT},
+                          {-COUNTS_PER_FOOT / 2.0, 0.866025 * COUNTS_PER_FOOT},
+                          {-COUNTS_PER_FOOT, 0.0},
+                          {-COUNTS_PER_FOOT / 2.0, -0.866025 * COUNTS_PER_FOOT},
+                          {COUNTS_PER_FOOT / 2.0, -0.866025 * COUNTS_PER_FOOT},
+                          {COUNTS_PER_FOOT, 0.0} };
+
 // Define Globals
 double lastTimeMs, startTimeMs;
-State currState = FIND_MARKER;
+State currState = START_TEST;
 double previousThetaLeft = 0.0, previousThetaRight = 0.0;
+double currX = 0.0, currY = 0.0;
+double prevPos = 0.0;
+unsigned int xYIndex = 0;
 
 double integralValX = 0.0, integralValAngle = 0.0, integralValRho = 0.0, integralValOmega = 0.0;
 double prevErrorX = 0.0, prevErrorAngle = 0.0, prevErrorRho = 0.0, prevErrorOmega = 0.0;
@@ -120,112 +135,45 @@ void loop() {
 
   double desiredRho, desiredOmega;
 
+  currX = xValue(currentAngle, currentPos - prevPos, currX);
+  currY = xValue(currentAngle, currentPos - prevPos, currY);
+
 
   bool moveStateFlag = false;
 
   switch(currState) { // Tuning, transitions, targets (for desiredPos and desiredAngle)
-    case FIND_MARKER:
+    case START_TEST:
+      desiredAngle = DesiredAngleXY(currX, currY, xyMatrix[xYIndex][0], xyMatrix[xYIndex][1]);
+      desiredPos = 0.0;
+      currState = TURN_TO_XY;
+      break;
+    case TURN_TO_XY:
 
-      desiredPos = 0; 
+      desiredPos = 0.0;
 
       kPRho = 0.8;
       kIRho = 0.6;
 
-      if( !isnan(lastPiMeasuredAngle) ) { // Exit state as soon as marker is seen
-        moveStateFlag = true;
-        if (currentTime < 1.0) { // Add fudge factor (0.25) if Aruco marker is not immediately seen
-          desiredAngle = lastPiMeasuredAngle;
-        } else {
-          desiredAngle = lastPiMeasuredAngle - 0.25; // Fudge factor is determined emperically to compensate for camera delay
-        }
-        currState = TURN_TO_MARKER;
-      }
-      break;
-
-    case TURN_TO_MARKER:
-
-      // desired position is still zero, use previous PID control efforts
-
       if ( abs(currentAngle - desiredAngle ) < TURN_TO_MARKER_ERROR_BAND ) { // Counts if within errorband to allow for settling time
         settleCountTurnMark++;
       }
-
       if  ( settleCountTurnMark >= 50 && !isnan(lastPiMeasuredDistance)) {
         moveStateFlag = true;
-        desiredPos = (lastPiMeasuredDistance * COUNTS_PER_INCH) - COUNTS_PER_FOOT; // Set desired position to the distance from the aruco marker minus 1 foot
-        currState = DRIVE_TO_MARKER;
+        desiredPos = DesiredDistanceXY(currX, currY, xyMatrix[xYIndex][0], xyMatrix[xYIndex][1]) + currentPos; // Set desired position to the distance from the aruco marker minus 1 foot
+        currState = DRIVE_TO_XY;
       }
       break;
-
-    // tested case to try to become more accurate, found it was difficult to work with (especially considering delay);
-    // case ANGLE_CHECK:
-      
-    //   if (++angleCheckCount >= 200) {
-    //     moveStateFlag = true;
-    //     if (abs(lastPiMeasuredAngle) < TURN_TO_MARKER_ERROR_BAND) {
-    //       currState = DRIVE_TO_MARKER;
-    //     } else {
-    //       desiredAngle = lastPiMeasuredAngle;
-    //       currState = TURN_TO_MARKER;
-    //     }
-    //   }
-
-    case DRIVE_TO_MARKER:
-
+    case DRIVE_TO_XY:
       desiredAngle = 0.0;
-      // desiredPos = 4.0 * COUNTS_PER_FOOT; // Test for this state
 
-      if ( (desiredPos - currentPos < 0) ) { // Once the robot is within a foot
+      if((desiredPos - currentPos) < 0 ) {
         moveStateFlag = true;
-        if (IS_CIRCLE_TIME) {
-          currState = TURN_RIGHT;
-        } else {
-          currState = STOP;
-        }
+        currState = START_TEST;
       }
-      break;
-
-    case TURN_RIGHT:
-
-      desiredAngle = -PI / 2.0; // Negative indicates right in this control scheme
-      desiredPos = 0.0;
-
-      if ( abs(currentAngle + (PI/2.0) ) < ANGLE_ERROR_BAND ) { // Counts when within error band to allow for settling time
-        settleCountTurnRight++;
-      }
-
-      if  ( settleCountTurnRight >= 50 ) {
-        moveStateFlag = true;
-        currState = DO_A_CIRCLE;
-      }
-      break;
-
-    case DO_A_CIRCLE:
-
-      kPOmega = 1.0;
-      kIOmega = 0.0;
-      kDOmega = 0.0;
-
-      kPRho = 1.0;
-      kIRho = 0.0;
-      kDRho = 0.0;
-
-      if (currentAngle > 2.0 * PI) { // Once the robot has turned more than 2pi radians, it is done with circle
-        moveStateFlag = true;
-        currState = STOP;
-      }
-      break;
-
-    case STOP: // Don't do anything
-
-      desiredPos = 0.0;
-      desiredAngle = 0.0;
       break;
   }
 
   if( moveStateFlag ) { // When moving states, reset any counters, integral values, and encoders
-    EncLeft.write(0);
-    EncRight.write(0);
     integralValAngle = 0;
     integralValOmega = 0;
     integralValRho = 0;
@@ -244,6 +192,9 @@ void loop() {
     case DRIVE_TO_MARKER:
     case TURN_RIGHT:
     case STOP:
+    case START_TEST:
+    case TURN_TO_XY:
+    case DRIVE_TO_XY:
       desiredRho = PID(desiredPos, currentPos, DESIRED_TS_MS, kPX, kIX, kDX, &integralValX, &prevErrorX);
       desiredOmega = PID(desiredAngle, currentAngle, DESIRED_TS_MS, kPAngle, kIAngle, kDAngle, &integralValAngle, &prevErrorAngle);
       break;
@@ -262,6 +213,7 @@ void loop() {
 
   previousThetaLeft = thetaLeft;
   previousThetaRight = thetaRight;
+  prevPos = currentPos;
 
   // Debugging Statements
   // Serial.print(currentTime);

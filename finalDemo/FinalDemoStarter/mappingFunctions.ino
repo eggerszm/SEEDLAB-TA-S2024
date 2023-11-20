@@ -1,9 +1,9 @@
-double xValue(double heading, double distance) {
-  return distance * cos(heading);
+double xValue(double heading, double distance, double currX) {
+  return (distance * cos(heading)) + currX;
 }
 
-double yValue(double heading, double distance) {
-  return distance * sin(heading);
+double yValue(double heading, double distance, double currY) {
+  return (distance * sin(heading)) + currY;
 }
 
 double DesiredAngleXY(double currX, double currY, double desiredX, double desiredY) {

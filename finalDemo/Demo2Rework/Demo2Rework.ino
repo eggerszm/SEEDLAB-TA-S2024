@@ -52,6 +52,8 @@ enum State {
   STOP
 };
 
+
+
 // Define Globals
 double lastTimeMs, startTimeMs;
 State currState = FIND_MARKER;
