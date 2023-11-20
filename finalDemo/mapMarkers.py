@@ -49,7 +49,7 @@ def main():
 
         # Rotate points by 45 deg left
         for i in range(0, 6):
-            poses_rot[i, :] = tf.rotate_y(poses[i, :], 0)
+            poses_rot[i, :] = tf.rotate_y(poses[i, :], math.pi/4)
 
         cv2.imshow("Detected Markers", overlay)
 
