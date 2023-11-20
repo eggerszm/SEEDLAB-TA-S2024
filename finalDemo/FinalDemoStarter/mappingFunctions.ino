@@ -7,7 +7,7 @@ double yValue(double heading, double distance, double currY) {
 }
 
 double DesiredAngleXY(double currX, double currY, double desiredX, double desiredY) {
-  return atan((desiredX - currX) / (desiredY - currY));
+  return atan((desiredY - currY) / (desiredX - currX));
 }
 
 double DesiredDistanceXY(double currX, double currY, double desiredX, double desiredY) {

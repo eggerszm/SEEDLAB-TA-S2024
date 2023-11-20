@@ -43,20 +43,20 @@ To Use:
 
 // Define States
 enum State {
-  FIND_MARKER,
-  TURN_TO_MARKER,
-  ANGLE_CHECK,
-  DRIVE_TO_MARKER,
-  TURN_RIGHT,
-  DO_A_CIRCLE,
-  START_TEST,
-  TURN_TO_XY,
-  DRIVE_TO_XY,
-  STOP
+  FIND_MARKER, //0
+  TURN_TO_MARKER, //1
+  ANGLE_CHECK, //2
+  DRIVE_TO_MARKER, //3
+  TURN_RIGHT, //4
+  DO_A_CIRCLE, //5
+  START_TEST, //6
+  TURN_TO_XY, //7
+  DRIVE_TO_XY, //8
+  STOP //9
 };
 
 // Testing Array -- Values given in counts to make a regular hexagon of "radius" 1 ft
-double xyMatrix[7][2] = { {COUNTS_PER_FOOT, 0.0},
+double xyMatrix[7][2] = { {COUNTS_PER_FOOT, COUNTS_PER_FOOT},
                           {COUNTS_PER_FOOT / 2.0, 0.866025 * COUNTS_PER_FOOT},
                           {-COUNTS_PER_FOOT / 2.0, 0.866025 * COUNTS_PER_FOOT},
                           {-COUNTS_PER_FOOT, 0.0},
@@ -111,7 +111,7 @@ void loop() {
   double thetaDotRight = (thetaRight - previousThetaRight) / DESIRED_TS_MS; // Right wheel angular velocity in rad/ms
   double thetaDotLeft = (thetaLeft - previousThetaLeft) / DESIRED_TS_MS; // Left wheel angular velocity in rad/ms
 
-  double currentPos = (currentCountLeft + currentCountRight) / 2.0;
+  double currentPos = (currentCountLeft + currentCountRight) / 2.0; // Distance traveled in counts
   double currentRho = WHEEL_DIAMETER_IN_CM / 2.0 * (thetaDotRight + thetaDotLeft) / 2.0; // Average speed of the wheels is linear velocity measured in cm / ms
 
   double currentAngle = (WHEEL_DIAMETER_IN_CM / 2.0) * (thetaRight - thetaLeft) / ROBOT_DIAMETER_IN_CM; // Current heading of the robot related to where it started
@@ -136,7 +136,7 @@ void loop() {
   double desiredRho, desiredOmega;
 
   currX = xValue(currentAngle, currentPos - prevPos, currX);
-  currY = xValue(currentAngle, currentPos - prevPos, currY);
+  currY = yValue(currentAngle, currentPos - prevPos, currY);
 
 
   bool moveStateFlag = false;
@@ -146,6 +146,8 @@ void loop() {
       desiredAngle = DesiredAngleXY(currX, currY, xyMatrix[xYIndex][0], xyMatrix[xYIndex][1]);
       desiredPos = 0.0;
       currState = TURN_TO_XY;
+      Serial.println(desiredAngle);
+      settleCountTurnMark = 0;
       break;
     case TURN_TO_XY:
 
@@ -157,7 +159,7 @@ void loop() {
       if ( abs(currentAngle - desiredAngle ) < TURN_TO_MARKER_ERROR_BAND ) { // Counts if within errorband to allow for settling time
         settleCountTurnMark++;
       }
-      if  ( settleCountTurnMark >= 50 && !isnan(lastPiMeasuredDistance)) {
+      if  ( settleCountTurnMark >= 50 ) {
         moveStateFlag = true;
         desiredPos = DesiredDistanceXY(currX, currY, xyMatrix[xYIndex][0], xyMatrix[xYIndex][1]) + currentPos; // Set desired position to the distance from the aruco marker minus 1 foot
         currState = DRIVE_TO_XY;
@@ -168,8 +170,15 @@ void loop() {
 
       if((desiredPos - currentPos) < 0 ) {
         moveStateFlag = true;
+        xYIndex++;
         currState = START_TEST;
+        if(xYIndex == 8) currState = STOP;
       }
+      break;
+    
+    case STOP:
+      desiredPos = 0.0;
+      desiredAngle = 0.0;
       break;
   }
 
@@ -216,24 +225,21 @@ void loop() {
   prevPos = currentPos;
 
   // Debugging Statements
-  // Serial.print(currentTime);
-  // Serial.print("\t");
-  // Serial.print(currState);
-  // Serial.print("\t");
-  // Serial.print(lastPiMeasuredAngle);
-  // Serial.print("\t");
-  // Serial.print(currentPos - desiredPos , 4);
-  // Serial.print("\t");
-  // Serial.print(currentAngle - desiredAngle, 4);
-  // Serial.println("\t");
-  // Serial.print(currentRho, 4);
-  // Serial.print("\t");
-  // Serial.print(currentOmega, 4);
-  // Serial.print("\t");
-  // Serial.print(voltSum);
-  // Serial.print("\t");
-  // Serial.println(voltDelta);
-  // Serial.println();
+  Serial.print(currentTime);
+  Serial.print("\t");
+  Serial.print(currState);
+  Serial.print("\t");
+  Serial.print(currX);
+  Serial.print("\t");
+  Serial.print(currY);
+  Serial.print("\t");
+  Serial.print(currentPos);
+  Serial.print("\t");
+  Serial.print(desiredPos);
+  Serial.print("\t");
+  Serial.print(currentAngle);
+  Serial.print("\t");
+  Serial.println(desiredAngle);
 
 
 
