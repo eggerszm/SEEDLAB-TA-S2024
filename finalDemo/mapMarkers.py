@@ -1,7 +1,7 @@
 """Intial proof of concept mapping code for 6 aruco markers"""
 
-import cv2
 import math
+import cv2
 import numpy as np
 from cv2 import aruco
 
@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import cameraConfig
 import transformations as tf
 
-MARKER_SIZE = 8.5 # cm-ish, tuning constant
+MARKER_SIZE = 8.5  # cm-ish, tuning constant
 
 
 def main():
@@ -25,31 +25,36 @@ def main():
     if True:
         _, img = camera.read()
 
-
         # Undistort and process the image for detection
         ncm = None
         undist_img = cv2.undistort(img, mtx, dist_mtx, None, ncm)
         img_gray = cv2.cvtColor(undist_img, cv2.COLOR_BGR2GRAY)
 
-        corners, ids, rejected = aruco.detectMarkers(img_gray, aruco_dict)
+        corners, ids, _ = aruco.detectMarkers(img_gray, aruco_dict)
 
         overlay = aruco.drawDetectedMarkers(undist_img, corners)
 
-        overlay = cv2.line(overlay, (0, int(480/2)), (640, int(480/2)), (0,0,255), 1)
-        overlay = cv2.line(overlay, (int(640/2), 0), (int(640/2), 480), (0,0,255), 1)
+        overlay = cv2.line(
+            overlay, (0, int(480 / 2)), (640, int(480 / 2)), (0, 0, 255), 1
+        )
+        overlay = cv2.line(
+            overlay, (int(640 / 2), 0), (int(640 / 2), 480), (0, 0, 255), 1
+        )
 
         # Estimate pose of each detected marker
-        poses = np.zeros((6,3))
-        poses_rot = np.zeros((6,3))
+        poses = np.zeros((6, 3))
+        poses_rot = np.zeros((6, 3))
         if len(corners) > 0:
             print("One Image:")
             for i in range(0, len(ids)):
-                rv, tv, _ = aruco.estimatePoseSingleMarkers(corners[i], MARKER_SIZE, mtx, dist_mtx)
+                rv, tv, _ = aruco.estimatePoseSingleMarkers(
+                    corners[i], MARKER_SIZE, mtx, dist_mtx
+                )
                 poses[ids[i], :] = tv[0, 0, :]
 
         # Rotate points by 45 deg left
         for i in range(0, 6):
-            poses_rot[i, :] = tf.rotate_y(poses[i, :], math.pi/4)
+            poses_rot[i, :] = tf.rotate_y(poses[i, :], math.pi / 4)
 
         cv2.imshow("Detected Markers", overlay)
 
@@ -57,18 +62,17 @@ def main():
 
         # Plotting for testing
         fig = plt.figure()
-        ax = fig.add_subplot(projection='3d')
-        ax.scatter(0,0,0)
+        ax = fig.add_subplot(projection="3d")
+        ax.scatter(0, 0, 0)
         ax.scatter(poses[:, 0], poses[:, 2], poses[:, 1])
         ax.scatter(poses_rot[:, 0], poses_rot[:, 2], poses_rot[:, 1])
         plt.show()
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):
+        if cv2.waitKey(1) & 0xFF == ord("q"):
             cv2.destroyAllWindows()
-            plt.close('all')
-            #break
+            plt.close("all")
+            # break
 
-    
 
 if __name__ == "__main__":
     main()
