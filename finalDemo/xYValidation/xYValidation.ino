@@ -30,7 +30,7 @@ To Use:
 
 #define DESIRED_RADIUS 6.0
 
-#define COUNTS_PER_FOOT 2 * 2070.0
+#define COUNTS_PER_FOOT 2070.0
 #define COUNTS_PER_INCH 172.5
 
 #define SPIN_RATE PI / 20.0 // Ensure this value is not too fast to allow camera to see marker
@@ -66,7 +66,7 @@ double xyMatrix[7][2] = { {COUNTS_PER_FOOT, COUNTS_PER_FOOT},
 
 // Define Globals
 double lastTimeMs, startTimeMs;
-State currState = START_TEST;
+State currState = TURN_TO_XY;
 double previousThetaLeft = 0.0, previousThetaRight = 0.0;
 double currX = 0.0, currY = 0.0;
 double prevPos = 0.0;
@@ -97,7 +97,11 @@ void setup() {
   // Timing
   lastTimeMs - millis();
   startTimeMs = lastTimeMs;
+
+  desiredAngle = DesiredAngleXY(currX, currY, 4 * COUNTS_PER_FOOT, 5* COUNTS_PER_FOOT);
 }
+
+
 
 void loop() {
   double currentTime = (lastTimeMs - startTimeMs) / 1000.0; // Current Time in seconds
@@ -138,48 +142,37 @@ void loop() {
   currX = xValue(currentAngle, currentPos - prevPos, currX);
   currY = yValue(currentAngle, currentPos - prevPos, currY);
 
-
   bool moveStateFlag = false;
 
-  switch(currState) { // Tuning, transitions, targets (for desiredPos and desiredAngle)
-    case START_TEST:
-      desiredAngle = DesiredAngleXY(currX, currY, xyMatrix[xYIndex][0], xyMatrix[xYIndex][1]);
-      desiredPos = 0.0;
-      currState = TURN_TO_XY;
-      Serial.println(desiredAngle);
-      settleCountTurnMark = 0;
-      break;
+  //Go To (4 ft, 5 ft)
+
+  switch(currState) {
     case TURN_TO_XY:
 
-      desiredPos = 0.0;
+        desiredPos = 0.0;
 
-      kPRho = 0.8;
-      kIRho = 0.6;
+        kPRho = 0.8;
+        kIRho = 0.6;
 
-      if ( abs(currentAngle - desiredAngle ) < TURN_TO_MARKER_ERROR_BAND ) { // Counts if within errorband to allow for settling time
-        settleCountTurnMark++;
-      }
-      if  ( settleCountTurnMark >= 50 ) {
-        moveStateFlag = true;
-        desiredPos = DesiredDistanceXY(currX, currY, xyMatrix[xYIndex][0], xyMatrix[xYIndex][1]) + currentPos; // Set desired position to the distance from the aruco marker minus 1 foot
-        currState = DRIVE_TO_XY;
-      }
-      break;
+        if ( abs(currentAngle - desiredAngle ) < TURN_TO_MARKER_ERROR_BAND ) { // Counts if within errorband to allow for settling time
+          settleCountTurnMark++;
+        }
+        if  ( settleCountTurnMark >= 50 ) {
+          moveStateFlag = true;
+          desiredPos = DesiredDistanceXY(currX, currY, 4 * COUNTS_PER_FOOT, 5 * COUNTS_PER_FOOT) + currentPos; // Set desired position to the distance from the aruco marker minus 1 foot
+          currState = DRIVE_TO_XY;
+        }
+        break;
     case DRIVE_TO_XY:
-      desiredAngle = 0.0;
+        // desiredAngle = 0.0;
 
-      if((desiredPos - currentPos) < 0 ) {
-        moveStateFlag = true;
-        xYIndex++;
-        currState = START_TEST;
-        if(xYIndex == 8) currState = STOP;
-      }
-      break;
-    
-    case STOP:
-      desiredPos = 0.0;
-      desiredAngle = 0.0;
-      break;
+        if((desiredPos - currentPos) < 0 ) {
+          moveStateFlag = true;
+          xYIndex++;
+          currState = START_TEST;
+          if(xYIndex == 8) currState = STOP;
+        }
+        break;
   }
 
   if( moveStateFlag ) { // When moving states, reset any counters, integral values, and encoders
@@ -224,25 +217,15 @@ void loop() {
   previousThetaRight = thetaRight;
   prevPos = currentPos;
 
-  // Debugging Statements
-  Serial.print(currentTime);
-  Serial.print("\t");
-  Serial.print(currState);
-  Serial.print("\t");
-  Serial.print(currX);
-  Serial.print("\t");
-  Serial.print(currY);
-  Serial.print("\t");
-  Serial.print(xYIndex);
-  Serial.print("\t");
-  Serial.print(currentPos);
-  Serial.print("\t");
-  Serial.print(desiredPos);
-  Serial.print("\t");
-  Serial.print(currentAngle);
-  Serial.print("\t");
-  Serial.println(desiredAngle);
+  //Debug Statements
+  Serial.print(currentTime);Serial.print("\t");
+  Serial.print(currState);Serial.print("\t");
 
+  Serial.print(currentAngle, 4);Serial.print("\t");
+  Serial.print(desiredAngle, 4);Serial.print("\t");
+
+  Serial.println();
+  
 
 
   while(millis() < lastTimeMs + DESIRED_TS_MS); // Wait til end of desired sample time
