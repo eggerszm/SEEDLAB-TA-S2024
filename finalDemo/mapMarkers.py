@@ -2,12 +2,14 @@
 
 import math
 import cv2
+import shapely
 import numpy as np
 from cv2 import aruco
 
 import matplotlib.pyplot as plt
 
 import cameraConfig
+import createPath
 import transformations as tf
 
 MARKER_SIZE = 8.5  # cm-ish, tuning constant
@@ -43,7 +45,7 @@ def main():
 
         # Estimate pose of each detected marker
         poses = np.zeros((6, 3))
-        poses_rot = np.zeros((6, 3))
+        poses_rot = np.zeros((6, 2))
         if len(corners) > 0:
             print("One Image:")
             for i in range(0, len(ids)):
@@ -52,20 +54,30 @@ def main():
                 )
                 poses[ids[i], :] = tv[0, 0, :]
 
+
+        # TODO: Go to 2D
+        poses2d = np.delete(np.copy(poses), 1, 1)
+
+        poly = shapely.Polygon(poses2d)
+        ctr = (poly.centroid.x, poly.centroid.y)
+        if ctr == (0,0):
+            ctr = (1,1)
+        print(ctr)
+
         # Rotate points by 45 deg left
         for i in range(0, 6):
-            poses_rot[i, :] = tf.rotate_y(poses[i, :], math.pi / 4)
+            poses_rot[i, :] = createPath.extend_from_ctr(ctr, poses[i], 20)
 
         cv2.imshow("Detected Markers", overlay)
 
-        print(poses, poses_rot)
+        #print(poses, poses_rot)
 
         # Plotting for testing
         fig = plt.figure()
         ax = fig.add_subplot(projection="3d")
         ax.scatter(0, 0, 0)
         ax.scatter(poses[:, 0], poses[:, 2], poses[:, 1])
-        ax.scatter(poses_rot[:, 0], poses_rot[:, 2], poses_rot[:, 1])
+        ax.scatter(poses_rot[:, 0], poses_rot[:, 1], 0)
         plt.show()
 
         if cv2.waitKey(1) & 0xFF == ord("q"):
