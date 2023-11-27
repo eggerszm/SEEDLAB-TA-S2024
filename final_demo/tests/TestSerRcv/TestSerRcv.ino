@@ -7,5 +7,9 @@ int inByte;
 
 void loop() {
   // put your main code here, to run repeatedly:
-  Serial.write("a"); 
+  if (Serial.available() > 0) {
+    inByte = Serial.read();
+
+    Serial.write(inByte);
+  }
 }
