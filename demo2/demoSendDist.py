@@ -17,9 +17,9 @@ IMG_Y_HEIGHT = 480
 
 MARKER_LEN = 3.95 # in
 
-ARD_ADDR = 8
-
 def main():
+    ser = serial.Serial("/dev/ttyACMA0", baudrate=115200, timeout=2)
+
     aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_50)
 
     camera = cv2.VideoCapture(0)
@@ -35,8 +35,6 @@ def main():
         dist_mtx = data["dist_coeff"]
 
     ctr = (0, 0)
-
-    i2cBus = SMBus(1)
 
     while True:
         _, img = camera.read()
@@ -64,7 +62,7 @@ def main():
         
         try: 
             if dist is not None and ang is not None:
-                send_2floats(ang, dist, i2cBus)
+                send_2floats(ang, dist, serBus)
         except IOError:
             print("Failed to transmit")
 
@@ -82,13 +80,10 @@ def get_dist_angle(tvec) -> (float, float):
     print(f"{dist} @ {ang / math.pi *180}")
     return dist, ang
 
-def send_float(fl, i2cBus, addr):
-    send_bytes = bytearray(struct.pack("f", fl))
-    i2cBus.write_i2c_block_data(ARD_ADDR, addr, send_bytes)
-
-def send_2floats(fl1, fl2, i2cBus):
+def send_2floats(fl1, fl2, serBus):
     send_bytes = bytearray(struct.pack("f", fl1)) + bytearray(struct.pack("f", fl2))
-    i2cBus.write_i2c_block_data(ARD_ADDR, 0, send_bytes)
+    serBus.write(send_bytes)
+    
 
 if __name__ == "__main__":
     main()
