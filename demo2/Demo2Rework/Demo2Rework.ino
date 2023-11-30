@@ -123,6 +123,28 @@ void loop() {
 
   bool moveStateFlag = false;
 
+  int byteIndex = 0;
+  char in_data[8] = {0};
+  char read_data = 0xFF;
+
+  while (Serial.available() > 0) {
+    read_data = Serial.read();
+    if (read_data != '\n' && read_data != '\r' && read_data != 'x'){
+      //in_data[byteIndex] = read_data;
+      byteIndex++;// = (byteIndex + 1) % 8;
+      Serial.print(byteIndex);
+      Serial.println(read_data);
+      //Serial.println(in_data[byteIndex]);
+    }
+  }
+
+  if(byteIndex % 8 == 7) {
+    memcpy(&lastPiMeasuredAngle, &(in_data[0]), 4);
+    memcpy(&lastPiMeasuredDistance, &(in_data[4]), 4);
+    Serial.println(lastPiMeasuredAngle);
+    Serial.println(lastPiMeasuredDistance);
+  }
+
   switch(currState) { // Tuning, transitions, targets (for desiredPos and desiredAngle)
     case FIND_MARKER:
 
