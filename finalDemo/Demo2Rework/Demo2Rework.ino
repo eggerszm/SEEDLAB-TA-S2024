@@ -24,8 +24,8 @@ To Use:
 #include <Wire.h>
 
 // Define Constants
-#define WHEEL_DIAMETER_IN_CM 15.0
-#define ROBOT_DIAMETER_IN_CM 36.947125 // Determined empirically
+#define WHEEL_DIAMETER_IN_CM 15.25
+#define ROBOT_DIAMETER_IN_CM 26.9 // Determined empirically
 #define DESIRED_TS_MS 10.0 
 
 #define DESIRED_RADIUS 6.0
@@ -56,7 +56,7 @@ enum State {
 
 // Define Globals
 double lastTimeMs, startTimeMs;
-State currState = FIND_MARKER;
+State currState = DRIVE_TO_MARKER;
 double previousThetaLeft = 0.0, previousThetaRight = 0.0;
 
 double integralValX = 0.0, integralValAngle = 0.0, integralValRho = 0.0, integralValOmega = 0.0;
@@ -175,7 +175,7 @@ void loop() {
     case DRIVE_TO_MARKER:
 
       desiredAngle = 0.0;
-      // desiredPos = 4.0 * COUNTS_PER_FOOT; // Test for this state
+      desiredPos = 4.0 * COUNTS_PER_FOOT; // Test for this state
 
       if ( (desiredPos - currentPos < 0) ) { // Once the robot is within a foot
         moveStateFlag = true;
@@ -266,24 +266,24 @@ void loop() {
   previousThetaRight = thetaRight;
 
   // Debugging Statements
-  // Serial.print(currentTime);
-  // Serial.print("\t");
-  // Serial.print(currState);
-  // Serial.print("\t");
+  Serial.print(currentTime);
+  Serial.print("\t");
+  Serial.print(currState);
+  Serial.print("\t");
   // Serial.print(lastPiMeasuredAngle);
   // Serial.print("\t");
-  // Serial.print(currentPos - desiredPos , 4);
-  // Serial.print("\t");
-  // Serial.print(currentAngle - desiredAngle, 4);
-  // Serial.println("\t");
-  // Serial.print(currentRho, 4);
-  // Serial.print("\t");
-  // Serial.print(currentOmega, 4);
-  // Serial.print("\t");
-  // Serial.print(voltSum);
-  // Serial.print("\t");
-  // Serial.println(voltDelta);
-  // Serial.println();
+  Serial.print(currentPos - desiredPos , 4);
+  Serial.print("\t");
+  Serial.print(currentAngle - desiredAngle, 4);
+  Serial.print("\t");
+  Serial.print(currentRho, 4);
+  Serial.print("\t");
+  Serial.print(currentOmega, 4);
+  Serial.print("\t");
+  Serial.print(voltSum);
+  Serial.print("\t");
+  Serial.print(voltDelta);
+  Serial.println();
 
 
 
